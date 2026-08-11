@@ -125,7 +125,7 @@ static class LogoGen
         string root = args[0];
         string srcPath = Path.Combine(root, "logo-source.png");
         if (!File.Exists(srcPath)) { Console.WriteLine("logo-source.png tidak ditemukan: " + srcPath); return; }
-        int[] sizes = { 16, 24, 32, 48, 64, 128, 256 };
+        int[] sizes = { 16, 24, 32, 48, 64 };
         using (var src = new Bitmap(srcPath))
         {
             var images = new Bitmap[sizes.Length];

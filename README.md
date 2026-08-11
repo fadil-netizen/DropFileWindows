@@ -1,4 +1,4 @@
-# DropFIileWindows
+# DropFileWindows
 
 Kotak drop Material You untuk Windows — tarik file/gambar/tautan web ke dalam kotak, lalu seret keluar kapan pun kamu butuh.
 

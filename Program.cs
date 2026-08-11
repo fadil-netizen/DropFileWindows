@@ -39,6 +39,7 @@ namespace DropFile
             string arg = args.Length > 0 ? args[0].Trim().ToLowerInvariant() : "";
             bool wantInstall = arg == "/install" || arg == "/i" || arg == "--install" || arg == "-i";
             bool wantUninstall = arg == "/uninstall" || arg == "/u" || arg == "--uninstall" || arg == "-u";
+            bool autostart = arg == "/autostart" || arg == "--autostart" || arg == "-autostart";
 
             if (wantUninstall)
             {
@@ -52,7 +53,7 @@ namespace DropFile
                 return;
             }
 
-            RunApp();
+            RunApp(autostart);
         }
 
         private static string InstallDir()
@@ -76,26 +77,51 @@ namespace DropFile
             }
         }
 
-        private static void RunApp()
+        private static void RunApp(bool autostart)
         {
             bool createdNew;
             using (var mutex = new Mutex(true, "DropFileApp_SingleInstance", out createdNew))
             {
                 if (!createdNew)
                 {
+                    // Sudah ada instance berjalan → minta instance itu membuka panel utama.
+                    try
+                    {
+                        using (var evt = new EventWaitHandle(false, EventResetMode.AutoReset, "DropFileApp_ShowMain"))
+                        {
+                            evt.Set();
+                        }
+                    }
+                    catch { }
                     return;
                 }
-                try
-                {
-                    Application.Run(new AppContext());
-                }
-                catch (Exception ex)
+                using (var showEvt = new EventWaitHandle(false, EventResetMode.AutoReset, "DropFileApp_ShowMain"))
                 {
                     try
                     {
-                        MessageBox.Show("DropFile: " + ex.Message, "DropFile", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        var ctx = new AppContext(!autostart);
+                        var waiter = new Thread(delegate()
+                        {
+                            while (true)
+                            {
+                                try { showEvt.WaitOne(); }
+                                catch { break; }
+                                try { ctx.RequestShowMain(); }
+                                catch { }
+                            }
+                        });
+                        waiter.IsBackground = true;
+                        waiter.Start();
+                        Application.Run(ctx);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        try
+                        {
+                            MessageBox.Show("DropFile: " + ex.Message, "DropFile", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        catch { }
+                    }
                 }
             }
         }
@@ -111,9 +137,15 @@ namespace DropFile
                 "Mengatur autostart saat login..."
             };
 
+            string info =
+                "Lokasi instalasi:\n" + installDir +
+                "\n\nBerkas yang akan dipasang:\n• DropFile.exe (aplikasi utama)\n• logo-preview.png (gambar pratinjau drag)\n\n" +
+                "Klik \"Lanjut\" untuk mulai memasang, atau \"Batal\" untuk membatalkan.";
+
             var form = new AnimatedSetupForm(
                 IconFactory.Create(),
                 InstallAccent,
+                info,
                 steps,
                 label => DoInstallStep(label, installDir, installedPath),
                 () =>
@@ -137,6 +169,17 @@ namespace DropFile
                 case "Menyalin file aplikasi...":
                     KillOtherInstances();
                     File.Copy(Assembly.GetExecutingAssembly().Location, installedPath, true);
+                    try
+                    {
+                        string srcPng = Path.Combine(
+                            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                            "logo-preview.png");
+                        if (File.Exists(srcPng))
+                        {
+                            File.Copy(srcPng, Path.Combine(installDir, "logo-preview.png"), true);
+                        }
+                    }
+                    catch { }
                     break;
 
                 case "Membuat pintasan di Start Menu...":
@@ -282,7 +325,7 @@ namespace DropFile
                 "Software\\Microsoft\\Windows\\CurrentVersion\\Run", true))
             {
                 if (rk == null) return;
-                if (enable) rk.SetValue("DropFile", "\"" + exePath + "\"");
+                if (enable) rk.SetValue("DropFile", "\"" + exePath + "\" /autostart");
                 else rk.DeleteValue("DropFile", false);
             }
         }
@@ -783,8 +826,48 @@ namespace DropFile
         private NotifyIcon tray;
         private Icon appIcon;
         private bool isClosing;
+        private MainWindow mainWindow;
+        private bool showMainRequested;
 
         public Settings AppSettings { get { return settings; } }
+
+        public bool IsClosing { get { return isClosing; } }
+
+        internal void RequestShowMain()
+        {
+            if (isClosing) return;
+            showMainRequested = true;
+        }
+
+        internal bool ConsumeShowMainRequest()
+        {
+            bool r = showMainRequested;
+            showMainRequested = false;
+            return r;
+        }
+
+        public void ShowMainWindow()
+        {
+            if (isClosing) return;
+            if (mainWindow == null || mainWindow.IsDisposed)
+            {
+                mainWindow = new MainWindow(this);
+            }
+            mainWindow.RefreshUi();
+            mainWindow.Show();
+            mainWindow.BringToFront();
+            mainWindow.Activate();
+        }
+
+        internal void CloseAllBoxes()
+        {
+            var arr = boxes.ToArray();
+            foreach (DropWindow b in arr)
+            {
+                try { b.CloseBox(); }
+                catch { }
+            }
+        }
 
         public void ApplyTheme()
         {
@@ -795,7 +878,90 @@ namespace DropFile
             }
         }
 
-        public AppContext()
+        internal void ShowColorMenu(Control owner, Point location)
+        {
+            Settings s = settings;
+            var menu = new ContextMenuStrip();
+            menu.Renderer = new DropWindow.MaterialMenuRenderer();
+            menu.ShowImageMargin = true;
+            menu.Font = new Font("Segoe UI", 9f);
+
+            var header = new ToolStripMenuItem("Warna Kotak Drop") { Enabled = false };
+            menu.Items.Add(header);
+            menu.Items.Add(new ToolStripSeparator());
+
+            var sys = new ToolStripMenuItem("Ikuti warna Windows") { Checked = s.AccentMode == "system" };
+            sys.ToolTipText = "Warna kotak mengikuti aksen warna sistem operasi";
+            sys.Click += delegate
+            {
+                s.AccentMode = "system";
+                s.Save();
+                ApplyTheme();
+            };
+            menu.Items.Add(sys);
+
+            menu.Items.Add(new ToolStripSeparator());
+
+            string[] presets =
+            {
+                "Biru", "#34B4FF",
+                "Indigo", "#5B8DEF",
+                "Ungu", "#A884F5",
+                "Merah Muda", "#F075A8",
+                "Merah", "#F2555A",
+                "Oranye", "#FF9F43",
+                "Kuning", "#F7C948",
+                "Hijau", "#4CC38A",
+                "Toska", "#2EC4B6"
+            };
+
+            bool isCustom = s.AccentMode == "custom";
+            for (int i = 0; i < presets.Length; i += 2)
+            {
+                string label = presets[i];
+                string hex = presets[i + 1];
+                string norm = hex.TrimStart('#').ToUpperInvariant();
+                bool active = isCustom && string.Equals(
+                    s.AccentHex.TrimStart('#').ToUpperInvariant(), norm,
+                    StringComparison.OrdinalIgnoreCase);
+
+                Color swatchColor = Color.FromArgb(
+                    Convert.ToInt32(norm.Substring(0, 2), 16),
+                    Convert.ToInt32(norm.Substring(2, 2), 16),
+                    Convert.ToInt32(norm.Substring(4, 2), 16));
+
+                var mi = new ToolStripMenuItem((active ? "✓ " : "") + label)
+                {
+                    Image = DropWindow.MakeSwatch(swatchColor),
+                    ToolTipText = "Gunakan warna " + label.ToLowerInvariant()
+                };
+                string capturedHex = hex;
+                mi.Click += delegate
+                {
+                    s.AccentMode = "custom";
+                    s.AccentHex = capturedHex;
+                    s.Save();
+                    ApplyTheme();
+                };
+                menu.Items.Add(mi);
+            }
+
+            menu.Items.Add(new ToolStripSeparator());
+
+            var reset = new ToolStripMenuItem("Reset ke warna bawaan");
+            reset.Click += delegate
+            {
+                s.AccentMode = "system";
+                s.AccentHex = "#34B4FF";
+                s.Save();
+                ApplyTheme();
+            };
+            menu.Items.Add(reset);
+
+            menu.Show(owner, location);
+        }
+
+        public AppContext(bool showMainOnLaunch)
         {
             settings = new Settings();
             shaker = new MouseShaker();
@@ -808,11 +974,26 @@ namespace DropFile
             ApplyStartupKey();
             ApplyFeatureState();
 
+            var poll = new System.Windows.Forms.Timer { Interval = 250 };
+            poll.Tick += delegate
+            {
+                if (ConsumeShowMainRequest())
+                {
+                    ShowMainWindow();
+                }
+            };
+            poll.Start();
+
             if (settings.IsFirstRun && settings.FeatureEnabled)
             {
                 tray.ShowBalloonTip(6000, "DropFile aktif",
                     "Goyangkan kursor (geser cepat bolak-balik 6x) untuk membuat kotak drop baru. Klik kanan kotak/ikon tray untuk menu.",
                     ToolTipIcon.Info);
+            }
+
+            if (showMainOnLaunch)
+            {
+                ShowMainWindow();
             }
         }
 
@@ -822,7 +1003,7 @@ namespace DropFile
             CreateBox();
         }
 
-        private void CreateBox()
+        internal void CreateBox()
         {
             if (boxes.Count >= MaxBoxes) return;
             var w = new DropWindow(this);
@@ -858,6 +1039,7 @@ namespace DropFile
             settings.FeatureEnabled = !settings.FeatureEnabled;
             settings.Save();
             ApplyFeatureState();
+            if (mainWindow != null && !mainWindow.IsDisposed) mainWindow.RefreshUi();
             if (settings.FeatureEnabled)
             {
                 tray.ShowBalloonTip(2000, "DropFile", "Fitur drop aktif.", ToolTipIcon.Info);
@@ -901,7 +1083,7 @@ namespace DropFile
                 if (rk == null) return;
                 if (settings.StartWithWindows)
                 {
-                    rk.SetValue("DropFile", "\"" + Path.Combine(InstallDir(), "DropFile.exe") + "\"");
+                    rk.SetValue("DropFile", "\"" + Path.Combine(InstallDir(), "DropFile.exe") + "\" /autostart");
                 }
                 else
                 {
@@ -951,6 +1133,12 @@ namespace DropFile
                 catch { }
             }
             boxes.Clear();
+            if (mainWindow != null && !mainWindow.IsDisposed)
+            {
+                try { mainWindow.Dispose(); }
+                catch { }
+            }
+            mainWindow = null;
             tray.Visible = false;
             tray.Dispose();
             if (appIcon != null) appIcon.Dispose();
@@ -967,6 +1155,10 @@ namespace DropFile
         private void ConfigureMenu(ContextMenuStrip m, DropWindow owner)
         {
             m.Items.Clear();
+
+            var main = new ToolStripMenuItem("Buka Panel Utama");
+            main.Click += delegate { ShowMainWindow(); };
+            m.Items.Add(main);
 
             var create = new ToolStripMenuItem("Buat kotak drop baru");
             create.Click += delegate { CreateBox(); };
@@ -1008,7 +1200,7 @@ namespace DropFile
             tray.Text = "DropFile — drag & drop file";
             tray.Visible = true;
             tray.ContextMenuStrip = MakeMenu(boxes.Count > 0 ? boxes[0] : null);
-            tray.DoubleClick += delegate { if (settings.FeatureEnabled) OnShake(this, EventArgs.Empty); };
+            tray.DoubleClick += delegate { ShowMainWindow(); };
         }
 
         private static string InstallDir()
@@ -1024,6 +1216,421 @@ namespace DropFile
             return string.Equals(Path.GetDirectoryName(Application.ExecutablePath), dir, StringComparison.OrdinalIgnoreCase)
                 && File.Exists(Path.Combine(dir, "DropFile.exe"));
         }
+    }
+
+    // Tampilan utama aplikasi — muncul saat DropFile diklik/dijalankan.
+    internal class MainWindow : Form
+    {
+        private const int MaxButtons = 6;
+
+        private readonly AppContext app;
+        private bool closeHover;
+        private bool closePressed;
+        private int buttonHover = -1;
+        private int buttonPressed = -1;
+        private Rectangle CloseBtnRect;
+
+        private readonly List<Rectangle> _buttonRects = new List<Rectangle>();
+        private readonly List<Action> _buttonActions = new List<Action>();
+        private readonly float[] buttonGlow = new float[MaxButtons];
+        private readonly float[] buttonPress = new float[MaxButtons];
+        private System.Windows.Forms.Timer btnAnim;
+
+        // Font dik-cache agar tidak dialokasikan ulang per frame.
+        private readonly Font titleFont;
+        private readonly Font subFont;
+        private readonly Font statusFont;
+        private readonly Font hintFont;
+        private readonly Font[] buttonFonts = new Font[3];
+
+        public MainWindow(AppContext app)
+        {
+            this.app = app;
+            Text = "DropFile — Panel Utama";
+            Icon = IconFactory.Create();
+            ClientSize = new Size(380, 470);
+            MinimumSize = new Size(380, 470);
+            MaximumSize = new Size(380, 470);
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.CenterScreen;
+            BackColor = MaterialColors.SurfaceContainerLow;
+            DoubleBuffered = true;
+            ShowInTaskbar = true;
+            CloseBtnRect = new Rectangle(ClientSize.Width - 36, 10, 26, 26);
+
+            titleFont = new Font("Segoe UI", 15f, FontStyle.Bold);
+            subFont = new Font("Segoe UI", 9f);
+            statusFont = new Font("Segoe UI", 11f, FontStyle.Bold);
+            hintFont = new Font("Segoe UI", 8.5f);
+            buttonFonts[0] = new Font("Segoe UI", 10f, FontStyle.Bold);
+            buttonFonts[1] = new Font("Segoe UI", 10f);
+            buttonFonts[2] = new Font("Segoe UI", 10f);
+
+            btnAnim = new System.Windows.Forms.Timer { Interval = 20 };
+            btnAnim.Tick += OnButtonAnimTick;
+        }
+
+        public void RefreshUi()
+        {
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+            Rectangle rect = new Rectangle(1, 1, Width - 3, Height - 3);
+            using (var brush = new LinearGradientBrush(rect, MaterialColors.SurfaceContainerLow, MaterialColors.SurfaceDim, 90f))
+            {
+                g.FillRounded(rect, 16, brush);
+            }
+            using (Pen border = new Pen(Color.FromArgb(120, MaterialColors.OutlineVariant), 1.5f))
+            {
+                g.DrawRounded(rect, 16, border);
+            }
+            using (var stripBrush = new LinearGradientBrush(new Rectangle(0, 0, Width, 3), Accent, AccentLight, 0f))
+            {
+                g.FillRounded(new Rectangle(14, 2, Width - 28, 3), 2, stripBrush);
+            }
+
+            // Header: ikon + judul
+            if (app != null)
+            {
+                try
+                {
+                    using (Icon icon = IconFactory.Create())
+                    {
+                        g.DrawIcon(icon, new Rectangle(20, 18, 40, 40));
+                    }
+                }
+                catch { }
+            }
+
+            using (var white = new SolidBrush(MaterialColors.OnSurface))
+            using (var gray = new SolidBrush(MaterialColors.OnSurfaceVariant))
+            {
+                g.DrawString("DropFile", titleFont, white, 72, 18);
+                g.DrawString("Panel utama — seret & tempel file", subFont, gray, 72, 46);
+            }
+
+            DrawCloseButton(g);
+
+            // Status fitur
+            Settings s = app != null ? app.AppSettings : null;
+            bool on = s != null && s.FeatureEnabled;
+            float pulse = 0.5f + 0.5f * (float)Math.Sin(uiTime * 3.2);
+            using (var statBrush = new SolidBrush(on ? Accent : MaterialColors.Outline))
+            using (var glowBrush = new SolidBrush(on ? Color.FromArgb((int)(40 + 35 * pulse), Accent) : Color.Transparent))
+            {
+                int dotSize = on ? 10 + (int)(3 * pulse) : 10;
+                int dotX = 24, dotY = 96;
+                if (glowBrush != null && on)
+                {
+                    g.FillEllipse(glowBrush, dotX - 5, dotY - 5, dotSize + 10, dotSize + 10);
+                }
+                g.DrawString(on ? "● Aktif" : "○ Nonaktif", statusFont, statBrush, 40, 88);
+            }
+            using (var gray = new SolidBrush(MaterialColors.OnSurfaceVariant))
+            {
+                g.DrawString(on
+                    ? "Kotak drop siap dipanggil: goyangkan kursor (6x cepat) untuk memunculkan kotak baru."
+                    : "Fitur dimatikan. Klik tombol \"Nyalakan\" di bawah untuk mengaktifkan kotak drop.",
+                    hintFont, gray, new RectangleF(24, 112, Width - 48, 36));
+            }
+
+            // Tombol
+            _buttonRects.Clear();
+            _buttonActions.Clear();
+            int y = 156;
+            if (on) y = DrawButton(g, y, "Matikan Fitur", ButtonKind.Primary, new Action(ToggleOff));
+            else y = DrawButton(g, y, "Nyalakan Fitur", ButtonKind.Primary, new Action(ToggleOn));
+            y = DrawButton(g, y, "Buat Kotak Drop Baru", ButtonKind.Secondary, new Action(CreateBox));
+            y = DrawButton(g, y, "Pengaturan Warna...", ButtonKind.Secondary, new Action(ShowColor));
+            y = DrawButton(g, y, "Tutup Semua Kotak", ButtonKind.Secondary, new Action(CloseAllBoxes));
+            y = DrawButton(g, y, "Hapus Instalasi DropFile...", ButtonKind.Danger, new Action(Uninstall));
+            DrawButton(g, y, "Keluar", ButtonKind.Secondary, new Action(ExitApp));
+        }
+
+        private enum ButtonKind { Primary, Secondary, Danger }
+
+        private float uiTime;
+
+        private void OnButtonAnimTick(object sender, EventArgs e)
+        {
+            uiTime += 0.05f;
+            bool animating = false;
+            for (int i = 0; i < MaxButtons; i++)
+            {
+                float targetGlow = (buttonHover == i) ? 1f : 0f;
+                float targetPress = (buttonPressed == i) ? 1f : 0f;
+                if (Math.Abs(buttonGlow[i] - targetGlow) > 0.001f)
+                {
+                    buttonGlow[i] += (targetGlow - buttonGlow[i]) * 0.28f;
+                    animating = true;
+                }
+                else buttonGlow[i] = targetGlow;
+                if (Math.Abs(buttonPress[i] - targetPress) > 0.001f)
+                {
+                    buttonPress[i] += (targetPress - buttonPress[i]) * 0.3f;
+                    animating = true;
+                }
+                else buttonPress[i] = targetPress;
+            }
+            if (!animating) btnAnim.Stop();
+            Invalidate();
+        }
+
+        private int DrawButton(Graphics g, int y, string text, ButtonKind kind, Action onClick)
+        {
+            Rectangle r = new Rectangle(24, y, Width - 48, 40);
+            Color fill = MaterialColors.SurfaceContainerHigh;
+            Color fg = MaterialColors.OnSurface;
+            if (kind == ButtonKind.Primary)
+            {
+                fill = Accent;
+                fg = MaterialColors.OnPrimary;
+            }
+            else if (kind == ButtonKind.Danger)
+            {
+                fill = Color.FromArgb(40, 40, 46);
+                fg = MaterialColors.Error;
+            }
+
+            int idx = _buttonRects.Count;
+            float glow = buttonGlow[idx];
+            float press = buttonPress[idx];
+
+            // Efek tekan: ukuran menyusut sedikit + lebih terang.
+            int inset = (int)(press * 3f);
+            Rectangle dr = r;
+            if (inset > 0) dr.Inflate(-inset, -inset);
+
+            using (var b = new SolidBrush(fill))
+            {
+                g.FillRounded(dr, 10, b);
+            }
+            using (Pen p = new Pen(Color.FromArgb(60, 255, 255, 255), 1f))
+            {
+                g.DrawRounded(dr, 10, p);
+            }
+
+            // Efek sentuh (hover): overlay membesar pelan.
+            if (glow > 0.02f)
+            {
+                using (var b = new SolidBrush(Color.FromArgb((int)(38 * glow), 255, 255, 255)))
+                {
+                    g.FillRounded(dr, 10, b);
+                }
+            }
+            if (press > 0.02f)
+            {
+                Color pressFill = Color.FromArgb((int)(55 * press), kind == ButtonKind.Primary ? Color.White : MaterialColors.Primary);
+                using (var b = new SolidBrush(pressFill))
+                {
+                    g.FillRounded(dr, 10, b);
+                }
+            }
+
+            using (var fgBrush = new SolidBrush(fg))
+            {
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                g.DrawString(text, buttonFonts[(int)kind], fgBrush, dr, sf);
+            }
+            _buttonRects.Add(r);
+            _buttonActions.Add(onClick);
+            return y + 50;
+        }
+
+        private void StartButtonAnim()
+        {
+            if (!btnAnim.Enabled) btnAnim.Start();
+        }
+
+        private void DrawCloseButton(Graphics g)
+        {
+            Rectangle r = CloseBtnRect;
+            using (var bg = new SolidBrush(closeHover ? Color.FromArgb(70, 255, 255, 255) : Color.FromArgb(30, 255, 255, 255)))
+            {
+                g.FillEllipse(bg, r);
+            }
+            using (var pen = new Pen(Color.FromArgb(210, 255, 255, 255), 2f))
+            {
+                g.DrawLine(pen, r.Left + 8, r.Top + 8, r.Right - 8, r.Bottom - 8);
+                g.DrawLine(pen, r.Right - 8, r.Top + 8, r.Left + 8, r.Bottom - 8);
+            }
+        }
+
+        private static Color Accent { get { return MaterialColors.Primary; } }
+        private static Color AccentLight { get { return MaterialColors.AccentLight; } }
+
+        private void ToggleOn()
+        {
+            if (app != null && !app.AppSettings.FeatureEnabled) app.ToggleFeature();
+            RefreshUi();
+        }
+
+        private void ToggleOff()
+        {
+            if (app != null && app.AppSettings.FeatureEnabled) app.ToggleFeature();
+            RefreshUi();
+        }
+
+        private void CreateBox()
+        {
+            if (app != null) app.CreateBox();
+        }
+
+        private void ShowColor()
+        {
+            if (app != null) app.ShowColorMenu(this, new Point(24, 24));
+        }
+
+        private void CloseAllBoxes()
+        {
+            if (app != null) app.CloseAllBoxes();
+            RefreshUi();
+        }
+
+        private void Uninstall()
+        {
+            if (app != null) app.Uninstall();
+        }
+
+        private void ExitApp()
+        {
+            if (app != null) app.Exit();
+            else Close();
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (e.Button != MouseButtons.Left) return;
+
+            if (CloseBtnRect.Contains(e.Location))
+            {
+                closePressed = true;
+                closeHover = true;
+                buttonPressed = -1;
+                Invalidate();
+                return;
+            }
+
+            // Cek tombol (dari OnPaint terakhir)
+            for (int i = 0; i < _buttonRects.Count; i++)
+            {
+                if (_buttonRects[i].Contains(e.Location))
+                {
+                    buttonPressed = i;
+                    buttonHover = i;
+                    StartButtonAnim();
+                    Invalidate();
+                    return;
+                }
+            }
+
+            // Area header → drag jendela. Area bawah (non-tombol) jangan didrag.
+            if (e.Y < 150)
+            {
+                Native.ReleaseCapture();
+                Native.SendMessage(Handle, WM_NCLBUTTONDOWN, new IntPtr(HTCAPTION), IntPtr.Zero);
+            }
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            bool h = CloseBtnRect.Contains(e.Location);
+            if (h != closeHover) { closeHover = h; Invalidate(); }
+
+            int hover = -1;
+            for (int i = 0; i < _buttonRects.Count; i++)
+            {
+                if (_buttonRects[i].Contains(e.Location)) { hover = i; break; }
+            }
+            if (hover != buttonHover) { buttonHover = hover; StartButtonAnim(); Invalidate(); }
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            closeHover = false;
+            if (buttonHover != -1) { buttonHover = -1; StartButtonAnim(); Invalidate(); }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (e.Button != MouseButtons.Left) return;
+
+            if (closePressed)
+            {
+                closePressed = false;
+                Invalidate();
+                if (CloseBtnRect.Contains(e.Location))
+                {
+                    // Tutup panel utama → sembunyikan ke tray, aplikasi tetap jalan.
+                    Hide();
+                }
+                return;
+            }
+
+            if (buttonPressed >= 0 && buttonPressed < _buttonActions.Count)
+            {
+                int idx = buttonPressed;
+                buttonPressed = -1;
+                StartButtonAnim();
+                Invalidate();
+                if (_buttonRects[idx].Contains(e.Location))
+                {
+                    try { _buttonActions[idx](); }
+                    catch { }
+                }
+            }
+        }
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Escape) Hide();
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            base.OnFormClosing(e);
+            // Panel utama tidak menutup aplikasi — hanya sembunyi ke tray.
+            if (!app.IsClosing)
+            {
+                e.Cancel = true;
+                Hide();
+            }
+            else
+            {
+                DisposeFonts();
+            }
+        }
+
+        private void DisposeFonts()
+        {
+            try
+            {
+                if (titleFont != null) titleFont.Dispose();
+                if (subFont != null) subFont.Dispose();
+                if (statusFont != null) statusFont.Dispose();
+                if (hintFont != null) hintFont.Dispose();
+                foreach (Font f in buttonFonts)
+                {
+                    if (f != null) f.Dispose();
+                }
+            }
+            catch { }
+        }
+
+        private const int WM_NCLBUTTONDOWN = 0xA1;
+        private const int HTCAPTION = 0x2;
     }
 
     internal static class MaterialColors
@@ -2016,89 +2623,11 @@ namespace DropFile
 
         private void ShowSettingsMenu()
         {
-            Settings s = app.AppSettings;
-            var menu = new ContextMenuStrip();
-            menu.Renderer = new MaterialMenuRenderer();
-            menu.ShowImageMargin = true;
-            menu.Font = new Font("Segoe UI", 9f);
-
-            var header = new ToolStripMenuItem("Warna Kotak Drop") { Enabled = false };
-            menu.Items.Add(header);
-            menu.Items.Add(new ToolStripSeparator());
-
-            var sys = new ToolStripMenuItem("Ikuti warna Windows") { Checked = s.AccentMode == "system" };
-            sys.ToolTipText = "Warna kotak mengikuti aksen warna sistem operasi";
-            sys.Click += delegate
-            {
-                s.AccentMode = "system";
-                s.Save();
-                app.ApplyTheme();
-            };
-            menu.Items.Add(sys);
-
-            menu.Items.Add(new ToolStripSeparator());
-
-            string[] presets =
-            {
-                "Biru", "#34B4FF",
-                "Indigo", "#5B8DEF",
-                "Ungu", "#A884F5",
-                "Merah Muda", "#F075A8",
-                "Merah", "#F2555A",
-                "Oranye", "#FF9F43",
-                "Kuning", "#F7C948",
-                "Hijau", "#4CC38A",
-                "Toska", "#2EC4B6"
-            };
-
-            bool isCustom = s.AccentMode == "custom";
-            for (int i = 0; i < presets.Length; i += 2)
-            {
-                string label = presets[i];
-                string hex = presets[i + 1];
-                string norm = hex.TrimStart('#').ToUpperInvariant();
-                bool active = isCustom && string.Equals(
-                    s.AccentHex.TrimStart('#').ToUpperInvariant(), norm,
-                    StringComparison.OrdinalIgnoreCase);
-
-                Color swatchColor = Color.FromArgb(
-                    Convert.ToInt32(norm.Substring(0, 2), 16),
-                    Convert.ToInt32(norm.Substring(2, 2), 16),
-                    Convert.ToInt32(norm.Substring(4, 2), 16));
-
-                var mi = new ToolStripMenuItem((active ? "✓ " : "") + label)
-                {
-                    Image = MakeSwatch(swatchColor),
-                    ToolTipText = "Gunakan warna " + label.ToLowerInvariant()
-                };
-                string capturedHex = hex;
-                mi.Click += delegate
-                {
-                    s.AccentMode = "custom";
-                    s.AccentHex = capturedHex;
-                    s.Save();
-                    app.ApplyTheme();
-                };
-                menu.Items.Add(mi);
-            }
-
-            menu.Items.Add(new ToolStripSeparator());
-
-            var reset = new ToolStripMenuItem("Reset ke warna bawaan");
-            reset.Click += delegate
-            {
-                s.AccentMode = "system";
-                s.AccentHex = "#34B4FF";
-                s.Save();
-                app.ApplyTheme();
-            };
-            menu.Items.Add(reset);
-
             Rectangle sr = SettingsRect();
-            menu.Show(this, new Point(sr.Left, sr.Bottom + 2));
+            app.ShowColorMenu(this, new Point(sr.Left, sr.Bottom + 2));
         }
 
-        private static Bitmap MakeSwatch(Color c)
+        internal static Bitmap MakeSwatch(Color c)
         {
             var bmp = new Bitmap(14, 14);
             using (Graphics g = Graphics.FromImage(bmp))
@@ -2256,8 +2785,7 @@ namespace DropFile
             }
         }
 
-        private sealed class MaterialMenuColorTable : ProfessionalColorTable
-        {
+        private sealed class MaterialMenuColorTable : ProfessionalColorTable        {
             public override Color MenuItemSelected { get { return MaterialColors.SecondaryContainer; } }
             public override Color MenuItemBorder { get { return MaterialColors.SecondaryContainer; } }
             public override Color ToolStripDropDownBackground { get { return MaterialColors.SurfaceContainer; } }
@@ -2272,7 +2800,7 @@ namespace DropFile
             public override Color CheckPressedBackground { get { return MaterialColors.PrimaryContainer; } }
         }
 
-        private sealed class MaterialMenuRenderer : ToolStripProfessionalRenderer
+        internal sealed class MaterialMenuRenderer : ToolStripProfessionalRenderer
         {
             public MaterialMenuRenderer() : base(new MaterialMenuColorTable()) { }
 
@@ -3095,20 +3623,38 @@ namespace DropFile
 
         private const int FormWidth = 420;
         private const int FormHeight = 270;
+        private const int FormHeightInfo = 360;
 
         private string statusText = "Memulai...";
+        private readonly string info;
+        private bool waitingForConfirm;
+        private Button btnLanjut;
+        private Button btnBatal;
+
+        private readonly Font titleFont = new Font("Segoe UI", 10.5f, FontStyle.Bold);
+        private readonly Font subFont = new Font("Segoe UI", 8f);
+        private readonly Font infoFont = new Font("Segoe UI", 8.5f);
 
         public AnimatedSetupForm(Icon appIcon, Color accent, string[] steps, Action<string> doWork, Action onFinished)
+            : this(appIcon, accent, null, steps, doWork, onFinished)
+        {
+        }
+
+        public AnimatedSetupForm(Icon appIcon, Color accent, string info, string[] steps, Action<string> doWork, Action onFinished)
         {
             this.appIcon = appIcon;
             this.accent = accent;
+            this.info = info;
             this.steps = steps;
             this.doWork = doWork;
             this.onFinished = onFinished;
 
+            bool hasInfo = info != null;
+            int formHeight = hasInfo ? FormHeightInfo : FormHeight;
+
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(FormWidth, FormHeight);
+            ClientSize = new Size(FormWidth, formHeight);
             BackColor = Color.FromArgb(30, 34, 42);
             DoubleBuffered = true;
             ShowInTaskbar = true;
@@ -3120,14 +3666,120 @@ namespace DropFile
                 int r = 14;
                 gp.AddArc(0, 0, r * 2, r * 2, 180, 90);
                 gp.AddArc(FormWidth - r * 2 - 1, 0, r * 2, r * 2, 270, 90);
-                gp.AddArc(FormWidth - r * 2 - 1, FormHeight - r * 2 - 1, r * 2, r * 2, 0, 90);
-                gp.AddArc(0, FormHeight - r * 2 - 1, r * 2, r * 2, 90, 90);
+                gp.AddArc(FormWidth - r * 2 - 1, formHeight - r * 2 - 1, r * 2, r * 2, 0, 90);
+                gp.AddArc(0, formHeight - r * 2 - 1, r * 2, r * 2, 90, 90);
                 gp.CloseFigure();
                 Region = new Region(gp);
             }
 
             animTimer.Tick += OnAnimTick;
             fadeTimer.Tick += OnFadeTick;
+
+            if (info != null)
+            {
+                waitingForConfirm = true;
+                CreateButtons();
+            }
+        }
+
+        // Geser hue warna (efek Material You warna-warni).
+        private static Color ShiftHue(Color c, float degrees)
+        {
+            float h, s, l;
+            RgbToHsl(c, out h, out s, out l);
+            h += degrees / 360f;
+            h -= (float)Math.Floor(h);
+            return HslToRgb(h, s, l);
+        }
+
+        private static void RgbToHsl(Color c, out float h, out float s, out float l)
+        {
+            float r = c.R / 255f, g = c.G / 255f, b = c.B / 255f;
+            float max = Math.Max(r, Math.Max(g, b));
+            float min = Math.Min(r, Math.Min(g, b));
+            l = (max + min) / 2f;
+            float d = max - min;
+            if (d < 0.0001f) { h = 0f; s = 0f; return; }
+            s = l > 0.5f ? d / (2f - max - min) : d / (max + min);
+            if (max == r) h = (g - b) / d + (g < b ? 6f : 0f);
+            else if (max == g) h = (b - r) / d + 2f;
+            else h = (r - g) / d + 4f;
+            h /= 6f;
+        }
+
+        private static Color HslToRgb(float h, float s, float l)
+        {
+            if (s <= 0f)
+            {
+                byte gr = (byte)(l * 255f);
+                return Color.FromArgb(gr, gr, gr);
+            }
+            float q = l < 0.5f ? l * (1f + s) : l + s - l * s;
+            float p = 2f * l - q;
+            return Color.FromArgb(
+                (int)(Hue2Rgb(p, q, h + 1f / 3f) * 255f),
+                (int)(Hue2Rgb(p, q, h) * 255f),
+                (int)(Hue2Rgb(p, q, h - 1f / 3f) * 255f));
+        }
+
+        private static float Hue2Rgb(float p, float q, float tt)
+        {
+            if (tt < 0f) tt += 1f;
+            if (tt > 1f) tt -= 1f;
+            if (tt < 1f / 6f) return p + (q - p) * 6f * tt;
+            if (tt < 1f / 2f) return q;
+            if (tt < 2f / 3f) return p + (q - p) * (2f / 3f - tt) * 6f;
+            return p;
+        }
+
+        private void CreateButtons()
+        {
+            btnLanjut = new Button
+            {
+                Text = "Lanjut",
+                FlatStyle = FlatStyle.Flat,
+                BackColor = accent,
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9f, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Size = new Size(100, 34),
+                Location = new Point(FormWidth - 30 - 100, FormHeightInfo - 62),
+                UseVisualStyleBackColor = false
+            };
+            btnLanjut.FlatAppearance.BorderSize = 0;
+            btnLanjut.FlatAppearance.MouseOverBackColor = ShiftHue(accent, 12f);
+            btnLanjut.FlatAppearance.MouseDownBackColor = ShiftHue(accent, -12f);
+            btnLanjut.Click += (s, ev) => BeginInstallSteps();
+
+            btnBatal = new Button
+            {
+                Text = "Batal",
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(45, 50, 60),
+                ForeColor = Color.FromArgb(220, 220, 220),
+                Font = new Font("Segoe UI", 9f),
+                Cursor = Cursors.Hand,
+                Size = new Size(100, 34),
+                Location = new Point(FormWidth - 30 - 100 - 108, FormHeightInfo - 62),
+                UseVisualStyleBackColor = false
+            };
+            btnBatal.FlatAppearance.BorderSize = 1;
+            btnBatal.FlatAppearance.BorderColor = Color.FromArgb(90, 95, 105);
+            btnBatal.FlatAppearance.MouseOverBackColor = Color.FromArgb(58, 63, 74);
+            btnBatal.FlatAppearance.MouseDownBackColor = Color.FromArgb(70, 76, 88);
+            btnBatal.Click += (s, ev) => { cancelled = true; Close(); };
+
+            Controls.Add(btnLanjut);
+            Controls.Add(btnBatal);
+        }
+
+        private void BeginInstallSteps()
+        {
+            waitingForConfirm = false;
+            btnLanjut.Visible = false;
+            btnBatal.Visible = false;
+            statusText = "Memulai...";
+            Invalidate();
         }
 
         public void Start()
@@ -3164,6 +3816,12 @@ namespace DropFile
         private void OnAnimTick(object sender, EventArgs e)
         {
             t += 1f / 30f;
+
+            if (waitingForConfirm)
+            {
+                Invalidate();
+                return;
+            }
 
             if (success)
             {
@@ -3230,34 +3888,82 @@ namespace DropFile
 
             Rectangle r = ClientRectangle;
 
+            // Latar: gradien gelap bergetar halus + kilau warna-warni (Material You).
             float shift = (float)Math.Sin(t * 0.4) * 6f;
-            using (var bg = new LinearGradientBrush(r, Color.FromArgb(42, 47, 58), Color.FromArgb(26, 30, 38), 90f + shift))
+            using (var bg = new LinearGradientBrush(r, Color.FromArgb(30, 34, 42), Color.FromArgb(20, 23, 29), 90f + shift))
                 g.FillRectangle(bg, r);
 
             int cx = r.Width / 2;
 
-            float pulse = 1f + 0.04f * (float)Math.Sin(t * 2.5);
-            using (var glow = new SolidBrush(Color.FromArgb(50, accent)))
+            // Kilau latar berputar hue — warna-warni kedap-kedip.
+            for (int i = 0; i < 3; i++)
             {
-                int d = (int)(100 * pulse);
-                g.FillEllipse(glow, cx - d / 2, 38 - d / 2, d, d);
+                float ang = t * 0.8f + i * 2.09f;
+                float bx = cx + (float)Math.Cos(ang) * 130f;
+                float by = 38 + (float)Math.Sin(ang * 1.4f) * 70f;
+                int bd = 60 + (int)(20 * (float)Math.Sin(t * 3 + i));
+                Color bc = ShiftHue(accent, t * 60f + i * 120f);
+                using (var b = new SolidBrush(Color.FromArgb(28, bc)))
+                {
+                    g.FillEllipse(b, bx - bd / 2f, by - bd / 2f, bd, bd);
+                }
             }
 
-            float bob = (float)Math.Sin(t * 2) * 3f;
+            // Lingkaran cahaya di belakang ikon — membesar-mengecil + warna berganti.
+            float pulse = 1f + 0.12f * (float)Math.Sin(t * 2.5);
+            Color glowCol = ShiftHue(accent, t * 80f);
+            using (var glow = new SolidBrush(Color.FromArgb(60, glowCol)))
+            {
+                int d = (int)(110 * pulse);
+                g.FillEllipse(glow, cx - d / 2, 38 - d / 2, d, d);
+            }
+            // Cincin luar berdenyut.
+            float ringPulse = 1f + 0.15f * (float)Math.Sin(t * 1.8);
+            int ringD = (int)(150 * ringPulse);
+            using (var ringPen = new Pen(Color.FromArgb(55, ShiftHue(accent, t * 50f + 40f)), 2.5f))
+            {
+                g.DrawEllipse(ringPen, cx - ringD / 2f, 38 - ringD / 2f, ringD, ringD);
+            }
+
+            // Ikon: ukuran berubah-ubah + memantul.
+            float bob = (float)Math.Sin(t * 2) * 4f;
+            float iconScale = 1f + 0.10f * (float)Math.Sin(t * 3.2);
+            int iconSize = (int)(52 * iconScale);
             if (appIcon != null)
             {
-                int iconSize = 52;
                 g.DrawIcon(appIcon, cx - iconSize / 2, (int)(38 - iconSize / 2 + bob));
             }
 
-            using (var titleFont = new Font("Segoe UI", 10.5f, FontStyle.Bold))
-            using (var white = new SolidBrush(Color.White))
+            // Judul dengan warna berkilau halus.
+            using (var white = new SolidBrush(Color.FromArgb(245, 255, 255, 255)))
             {
                 var sf = new StringFormat { Alignment = StringAlignment.Center };
                 g.DrawString("DropFile", titleFont, white, new RectangleF(0, 96, r.Width, 22), sf);
             }
 
-            if (!success)
+            // Partikel kecil kedap-kedip warna-warni.
+            for (int i = 0; i < 6; i++)
+            {
+                float pa = t * (0.5f + (i % 3) * 0.15f) + i * 1.7f;
+                float px = 30 + (i * 71) % (r.Width - 60);
+                float py = 110 + (i * 37) % (r.Height - 130);
+                float alpha = 60f + 90f * (float)Math.Sin(pa);
+                if (alpha < 0) alpha = 0;
+                if (alpha > 0)
+                {
+                    Color pc = ShiftHue(accent, t * 90f + i * 60f);
+                    using (var b = new SolidBrush(Color.FromArgb((int)alpha, pc)))
+                    {
+                        g.FillEllipse(b, px, py, 4, 4);
+                    }
+                }
+            }
+
+            if (waitingForConfirm)
+            {
+                DrawInfoPanel(g, r);
+            }
+            else if (!success)
             {
                 DrawProgressBar(g, r);
             }
@@ -3266,11 +3972,29 @@ namespace DropFile
                 DrawCheckmark(g, r);
             }
 
-            using (var subFont = new Font("Segoe UI", 8f))
-            using (var gray = new SolidBrush(Color.FromArgb(180, 255, 255, 255)))
+            if (waitingForConfirm)
             {
-                var sf = new StringFormat { Alignment = StringAlignment.Center };
-                g.DrawString(statusText, subFont, gray, new RectangleF(0, 230, r.Width, 20), sf);
+                using (var gray = new SolidBrush(Color.FromArgb(200, 255, 255, 255)))
+                {
+                    var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Near };
+                    g.DrawString(info, infoFont, gray, new RectangleF(44, 128, r.Width - 88, 190), sf);
+                }
+            }
+            else
+            {
+                using (var gray = new SolidBrush(Color.FromArgb(180, 255, 255, 255)))
+                {
+                    var sf = new StringFormat { Alignment = StringAlignment.Center };
+                    g.DrawString(statusText, subFont, gray, new RectangleF(0, 230, r.Width, 20), sf);
+                }
+            }
+        }
+
+        private void DrawInfoPanel(Graphics g, Rectangle r)
+        {
+            using (var panelBg = new SolidBrush(Color.FromArgb(45, 255, 255, 255)))
+            {
+                DrawRounded(g, new Rectangle(30, 118, r.Width - 60, 208), 10, panelBg);
             }
         }
 
@@ -3286,16 +4010,20 @@ namespace DropFile
             int fillW = (int)(barW * progress);
             if (fillW > 0)
             {
+                // Gradien Material You — warna bergeser seiring waktu.
+                Color fillA = ShiftHue(accent, t * 90f);
+                Color fillB = ShiftHue(accent, t * 90f + 50f);
                 using (var fillGrad = new LinearGradientBrush(
                     new Rectangle(barX, barY, fillW, barH),
-                    accent,
-                    ControlPaint.Light(accent, 0.3f),
+                    fillA,
+                    fillB,
                     0f))
                 using (var path = CreateRoundedPath(new Rectangle(barX, barY, fillW, barH), 6))
                 {
                     g.FillPath(fillGrad, path);
                 }
 
+                // Kilau melintas.
                 float shine = ((t * 80f) % (barW + 60)) - 30;
                 if (shine > barX && shine < barX + barW)
                 {
@@ -3305,7 +4033,7 @@ namespace DropFile
                     if (sx + sw > barX + barW) sw = barX + barW - sx;
                     if (sw > 0)
                     {
-                        using (var shineBrush = new SolidBrush(Color.FromArgb(80, 255, 255, 255)))
+                        using (var shineBrush = new SolidBrush(Color.FromArgb(90, 255, 255, 255)))
                         {
                             g.FillRectangle(shineBrush, sx, barY, sw, barH);
                         }
@@ -3323,7 +4051,8 @@ namespace DropFile
             if (size < 2) return;
 
             int half = size / 2;
-            using (var pen = new Pen(accent, Math.Max(1, 5 * k)) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            Color ck = ShiftHue(accent, t * 60f);
+            using (var pen = new Pen(ck, Math.Max(1, 5 * k)) { StartCap = LineCap.Round, EndCap = LineCap.Round })
             {
                 g.DrawLine(pen, cx - half + 4, cy, cx - 2, cy + half - 4);
                 g.DrawLine(pen, cx - 2, cy + half - 4, cx + half - 4, cy - half / 2);
@@ -3354,6 +4083,13 @@ namespace DropFile
             base.OnFormClosing(e);
             animTimer.Stop();
             fadeTimer.Stop();
+            try
+            {
+                if (titleFont != null) titleFont.Dispose();
+                if (subFont != null) subFont.Dispose();
+                if (infoFont != null) infoFont.Dispose();
+            }
+            catch { }
         }
 
         public bool Cancelled { get { return cancelled; } }
