@@ -60,7 +60,22 @@ namespace DropFile
         {
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "DropFile");
+                "Programs", "DropFile");
+        }
+
+        private static void TryRemoveLegacyInstall()
+        {
+            try
+            {
+                string legacy = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "DropFile");
+                string current = InstallDir();
+                if (string.Equals(Path.GetFullPath(legacy),
+                    Path.GetFullPath(current), StringComparison.OrdinalIgnoreCase)) return;
+                if (Directory.Exists(legacy)) Directory.Delete(legacy, true);
+            }
+            catch { }
         }
 
         private static bool SameDir(string a, string b)
@@ -180,6 +195,7 @@ namespace DropFile
                         }
                     }
                     catch { }
+                    TryRemoveLegacyInstall();
                     break;
 
                 case "Membuat pintasan di Start Menu...":
@@ -518,6 +534,880 @@ namespace DropFile
         }
     }
 
+    internal static class Lang
+    {
+        public static readonly string[] Codes = new string[]
+            { "en", "id", "zh", "ja", "ar", "he", "es", "fr", "de", "ru", "pt", "ko" };
+        public static readonly string[] Names = new string[]
+            { "English", "Bahasa Indonesia", "中文 (Chinese)", "日本語 (Japanese)",
+              "العربية (Arabic)", "עברית (Hebrew)", "Español", "Français",
+              "Deutsch", "Русский", "Português", "한국어" };
+
+        public static string Code = "en";
+
+        private static readonly Dictionary<string, Dictionary<string, string>> Tables = Build();
+
+        private static Dictionary<string, Dictionary<string, string>> Build()
+        {
+            var t = new Dictionary<string, Dictionary<string, string>>();
+            t["en"] = Parse(@"mw.title=DropFile — Main Panel
+mw.sub=Main panel — drag & drop files
+mw.on=● Active
+mw.off=○ Inactive
+mw.hintOn=Drop boxes are ready: shake the cursor (6x fast) to spawn a new box.
+mw.hintOff=Feature disabled. Click the ""Turn On"" button below to enable drop boxes.
+mw.bOff=Turn Off Feature
+mw.bOn=Turn On Feature
+mw.bNew=New Drop Box
+mw.bColor=Color Settings...
+mw.bSettings=Settings...
+mw.bCloseAll=Close All Boxes
+mw.bUninstall=Uninstall DropFile...
+mw.bExit=Quit
+b.open=Open Main Panel
+b.new=Create new drop box
+b.closeBox=Close this box (delete temp files)
+b.feat=Enable drop feature
+b.top=Always on top
+b.start=Start at logon
+b.uninstall=Uninstall DropFile...
+b.exit=Quit
+b.tray=DropFile — drag & drop files
+b.notInstalled=DropFile is not installed. Run DropFile.exe to install.
+b.firstTitle=DropFile is active
+b.firstBody=Shake the cursor (6x fast back and forth) to create a new drop box. Right-click a box or the tray icon for the menu.
+b.onBody=Drop feature is now on.
+b.offBody=Drop feature is now off. All drop boxes were closed and temporary files removed.
+c.title=Drop Box Color
+c.sys=Follow Windows color
+c.sysTip=Box color follows the operating system accent color
+c.use=Use color {0}
+c.reset=Reset to default color
+c.blue=Blue
+c.indigo=Indigo
+c.purple=Purple
+c.pink=Pink
+c.red=Red
+c.orange=Orange
+c.yellow=Yellow
+c.green=Green
+c.teal=Teal
+box.title=DOCUMENT SHELF
+box.dropTitle=RELEASE ONTO THE SHELF!
+box.empty=Shelf is empty\nDrag files / images / web here
+box.dropHere=Drop here!
+box.hint=Drag out to move
+box.added=✓ {0} items added to the shelf
+box.failed=Failed to fetch data
+box.tip=DropFile document shelf:\n• Drag files, images, or web pages onto this shelf (from any app).\n• Dropped files are kept in the basket; you can keep adding more.\n• Click the ▾ button at the top right to check which files can be dragged out.\n• Drag files from the shelf to another folder or app to move the checked ones.\n• Click ✕ to close and clean up the shelf.
+bk.header=Basket — {0} files — check which ones can be dragged out
+bk.itemTip=Check to include this file when dragging out
+bk.all=Select All
+bk.none=Clear Selection
+bk.dragAll=Drag All Out
+bk.dragSel=Drag Out (Selected)
+bk.clear=Clear All
+s.title=DropFile Settings
+s.lang=Language
+s.boxes=Maximum drop boxes
+s.size=Drop box size
+s.hint=Changes are applied after you click Save.
+s.save=Save
+s.cancel=Cancel
+s.percent={0}%");
+            t["id"] = Parse(@"mw.title=DropFile — Panel Utama
+mw.sub=Panel utama — seret & tempel file
+mw.on=● Aktif
+mw.off=○ Nonaktif
+mw.hintOn=Kotak drop siap dipanggil: goyangkan kursor (6x cepat) untuk memunculkan kotak baru.
+mw.hintOff=Fitur dimatikan. Klik tombol ""Nyalakan"" di bawah untuk mengaktifkan kotak drop.
+mw.bOff=Matikan Fitur
+mw.bOn=Nyalakan Fitur
+mw.bNew=Buat Kotak Drop Baru
+mw.bColor=Pengaturan Warna...
+mw.bSettings=Pengaturan...
+mw.bCloseAll=Tutup Semua Kotak
+mw.bUninstall=Hapus Instalasi DropFile...
+mw.bExit=Keluar
+b.open=Buka Panel Utama
+b.new=Buat kotak drop baru
+b.closeBox=Tutup kotak ini (hapus file sementara)
+b.feat=Aktifkan fitur drop
+b.top=Selalu di atas
+b.start=Mulai saat login
+b.uninstall=Hapus instalasi DropFile...
+b.exit=Keluar
+b.tray=DropFile — drag & drop file
+b.notInstalled=DropFile belum terinstal. Jalankan DropFile.exe untuk menginstal.
+b.firstTitle=DropFile aktif
+b.firstBody=Goyangkan kursor (geser cepat bolak-balik 6x) untuk membuat kotak drop baru. Klik kanan kotak/ikon tray untuk menu.
+b.onBody=Fitur drop aktif.
+b.offBody=Fitur drop dimatikan. Semua kotak drop ditutup dan file sementara dihapus.
+c.title=Warna Kotak Drop
+c.sys=Ikuti warna Windows
+c.sysTip=Warna kotak mengikuti aksen warna sistem operasi
+c.use=Gunakan warna {0}
+c.reset=Reset ke warna bawaan
+c.blue=Biru
+c.indigo=Indigo
+c.purple=Ungu
+c.pink=Merah Muda
+c.red=Merah
+c.orange=Oranye
+c.yellow=Kuning
+c.green=Hijau
+c.teal=Toska
+box.title=RAK DOKUMEN
+box.dropTitle=LEPASKAN DI RAK!
+box.empty=Keranjang kosong\nSeret file / gambar / web ke sini
+box.dropHere=Lepaskan di sini!
+box.hint=Seret keluar untuk memindahkan
+box.added=✓ {0} item masuk ke rak
+box.failed=Gagal mengambil data
+box.tip=Rak Dokumen DropFile:\n• Seret file, gambar, atau halaman web ke rak ini (dari aplikasi apa pun).\n• File yang masuk tersimpan di keranjang; bisa terus menambahkan file baru.\n• Klik tombol ▾ di kanan atas untuk memilih (centang) file mana yang boleh ditarik keluar.\n• Tarik file dari rak ke folder/aplikasi lain untuk memindahkan yang tercentang.\n• Klik ✕ untuk menutup dan membersihkan rak.
+bk.header=Keranjang — {0} file — centang yang boleh ditarik keluar
+bk.itemTip=Centang agar file ini ikut ditarik keluar
+bk.all=Pilih Semua
+bk.none=Kosongkan Pilihan
+bk.dragAll=Seret Semua Keluar
+bk.dragSel=Seret Keluar (yang Terpilih)
+bk.clear=Bersihkan Semua
+s.title=Pengaturan DropFile
+s.lang=Bahasa
+s.boxes=Jumlah kotak drop maksimum
+s.size=Ukuran kotak drop
+s.hint=Perubahan diterapkan setelah klik Simpan.
+s.save=Simpan
+s.cancel=Batal
+s.percent={0}%");
+            t["zh"] = Parse(@"mw.title=DropFile — 主面板
+mw.sub=主面板 — 拖放文件
+mw.on=● 已启用
+mw.off=○ 未启用
+mw.hintOn=投放框已就绪：快速晃动光标 6 次即可新建投放框。
+mw.hintOff=功能已关闭。点击下方的“开启”按钮以启用投放框。
+mw.bOff=关闭功能
+mw.bOn=开启功能
+mw.bNew=新建投放框
+mw.bColor=颜色设置...
+mw.bSettings=设置...
+mw.bCloseAll=关闭所有投放框
+mw.bUninstall=卸载 DropFile...
+mw.bExit=退出
+b.open=打开主面板
+b.new=新建投放框
+b.closeBox=关闭此框（删除临时文件）
+b.feat=启用投放功能
+b.top=始终置顶
+b.start=登录时启动
+b.uninstall=卸载 DropFile...
+b.exit=退出
+b.tray=DropFile — 拖放文件
+b.notInstalled=DropFile 尚未安装。运行 DropFile.exe 进行安装。
+b.firstTitle=DropFile 已启用
+b.firstBody=晃动光标（快速来回移动 6 次）即可新建投放框。右键点击投放框或托盘图标打开菜单。
+b.onBody=投放功能已开启。
+b.offBody=投放功能已关闭。所有投放框已关闭，临时文件已删除。
+c.title=投放框颜色
+c.sys=跟随 Windows 颜色
+c.sysTip=投放框颜色跟随系统强调色
+c.use=使用颜色 {0}
+c.reset=恢复默认颜色
+c.blue=蓝色
+c.indigo=靛蓝
+c.purple=紫色
+c.pink=粉色
+c.red=红色
+c.orange=橙色
+c.yellow=黄色
+c.green=绿色
+c.teal=青色
+box.title=文件架
+box.dropTitle=放到文件架上！
+box.empty=文件架为空\n将文件 / 图片 / 网页拖到这里
+box.dropHere=放到此处！
+box.hint=拖出即可移动
+box.added=✓ 已将 {0} 个项目加入文件架
+box.failed=获取数据失败
+box.tip=DropFile 文件架：\n• 将文件、图片或网页拖到此文件架（任意应用均可）。\n• 放入的文件保存在篮子中，可继续添加。\n• 点击右上角 ▾ 按钮可勾选允许拖出的文件。\n• 从文件架拖到其他文件夹或应用即可移出已勾选的文件。\n• 点击 ✕ 关闭并清理文件架。
+bk.header=篮子 — {0} 个文件 — 勾选可拖出的文件
+bk.itemTip=勾选后此文件可被拖出
+bk.all=全选
+bk.none=清除选择
+bk.dragAll=全部拖出
+bk.dragSel=拖出所选
+bk.clear=清空全部
+s.title=DropFile 设置
+s.lang=语言
+s.boxes=最大投放框数量
+s.size=投放框大小
+s.hint=点击保存后更改生效。
+s.save=保存
+s.cancel=取消
+s.percent={0}%");
+            t["ja"] = Parse(@"mw.title=DropFile — メインパネル
+mw.sub=メインパネル — ファイルのドラッグ＆ドロップ
+mw.on=● オン
+mw.off=○ オフ
+mw.hintOn=ドロップボックス準備完了。カーソルを素早く 6 回振ると新しいボックスが出ます。
+mw.hintOff=機能はオフです。下の「オンにする」ボタンでドロップボックスを有効にしてください。
+mw.bOff=機能をオフにする
+mw.bOn=機能をオンにする
+mw.bNew=新しいドロップボックス
+mw.bColor=カラー設定...
+mw.bSettings=設定...
+mw.bCloseAll=すべてのボックスを閉じる
+mw.bUninstall=DropFile をアンインストール...
+mw.bExit=終了
+b.open=メインパネルを開く
+b.new=ドロップボックスを作成
+b.closeBox=このボックスを閉じる（一時ファイルを削除）
+b.feat=ドロップ機能を有効にする
+b.top=常に最前面
+b.start=ログオン時に起動
+b.uninstall=DropFile をアンインストール...
+b.exit=終了
+b.tray=DropFile — ファイルをドラッグ＆ドロップ
+b.notInstalled=DropFile は未インストールです。DropFile.exe を実行してインストールしてください。
+b.firstTitle=DropFile は有効です
+b.firstBody=カーソルを素早く 6 回振ると新しいドロップボックスが作成されます。ボックスやトレイアイコンを右クリックするとメニューが出ます。
+b.onBody=ドロップ機能がオンになりました。
+b.offBody=ドロップ機能がオフになりました。すべてのドロップボックスを閉じ、一時ファイルを削除しました。
+c.title=ドロップボックスの色
+c.sys=Windows の色に合わせる
+c.sysTip=ボックスの色はシステムのアクセントカラーに追従します
+c.use=色 {0} を使う
+c.reset=既定の色に戻す
+c.blue=青
+c.indigo=藍色
+c.purple=紫
+c.pink=ピンク
+c.red=赤
+c.orange=オレンジ
+c.yellow=黄
+c.green=緑
+c.teal=青緑
+box.title=書類シェルフ
+box.dropTitle=ここにドロップ！
+box.empty=シェルフは空です\nファイル / 画像 / Web をここにドラッグ
+box.dropHere=ここにドロップ！
+box.hint=外にドラッグして移動
+box.added=✓ {0} 個をシェルフに追加しました
+box.failed=データの取得に失敗しました
+box.tip=DropFile 書類シェルフ：\n• どのアプリでもファイル・画像・Web ページをこのシェルフへドラッグできます。\n• 入ったファイルはバスケットに保存され、追加し続けられます。\n• 右上の ▾ ボタンでドラッグ出しができるファイルを選択（チェック）できます。\n• シェルフから別のフォルダーやアプリへドラッグすると、チェックしたファイルが移動します。\n• ✕ をクリックすると閉じて掃除します。
+bk.header=バスケット — {0} ファイル — ドラッグ出しができるものをチェック
+bk.itemTip=チェックするとこのファイルも一緒にドラッグ出されます
+bk.all=すべて選択
+bk.none=選択を解除
+bk.dragAll=すべてドラッグ出す
+bk.dragSel=選択したものをドラッグ出す
+bk.clear=すべてクリア
+s.title=DropFile 設定
+s.lang=言語
+s.boxes=ドロップボックスの最大数
+s.size=ドロップボックスのサイズ
+s.hint=変更は「保存」を押した後に適用されます。
+s.save=保存
+s.cancel=キャンセル
+s.percent={0}%");
+            t["ar"] = Parse(@"mw.title=DropFile — اللوحة الرئيسية
+mw.sub=اللوحة الرئيسية — اسحب وأفلت الملفات
+mw.on=● مفعّل
+mw.off=○ غير مفعّل
+mw.hintOn=صناديق الإفلات جاهزة: حرّك المؤشر بسرعة (6 مرات) لإنشاء صندوق جديد.
+mw.hintOff=الميزة معطّلة. اضغط زر «تشغيل» بالأسفل لتفعيل صناديق الإفلات.
+mw.bOff=إيقاف الميزة
+mw.bOn=تشغيل الميزة
+mw.bNew=صندوق إفلات جديد
+mw.bColor=إعدادات اللون...
+mw.bSettings=الإعدادات...
+mw.bCloseAll=إغلاق كل الصناديق
+mw.bUninstall=إلغاء تثبيت DropFile...
+mw.bExit=خروج
+b.open=فتح اللوحة الرئيسية
+b.new=إنشاء صندوق إفلات جديد
+b.closeBox=إغلاق هذا الصندوق (حذف الملفات المؤقتة)
+b.feat=تفعيل ميزة الإفلات
+b.top=في المقدمة دائمًا
+b.start=البدء عند تسجيل الدخول
+b.uninstall=إلغاء تثبيت DropFile...
+b.exit=خروج
+b.tray=DropFile — اسحب وأفلت الملفات
+b.notInstalled=DropFile غير مثبّت. شغّل DropFile.exe للتثبيت.
+b.firstTitle=DropFile مفعّل
+b.firstBody=حرّك المؤشر بسرعة (6 مرات ذهابًا وإيابًا) لإنشاء صندوق إفلات جديد. انقر بزر الفأرة الأيمن على الصندوق أو أيقونة المنصة لفتح القائمة.
+b.onBody=ميزة الإفلات مفعّلة الآن.
+b.offBody=ميزة الإفلات معطّلة الآن. أُغلقت كل صناديق الإفلات وحُذفت الملفات المؤقتة.
+c.title=لون صندوق الإفلات
+c.sys=اتباع لون Windows
+c.sysTip=يتبع لون الصندوق لون نظام التشغيل
+c.use=استخدام اللون {0}
+c.reset=الاستعادة إلى اللون الافتراضي
+c.blue=أزرق
+c.indigo=نيلي
+c.purple=بنفسجي
+c.pink=وردي
+c.red=أحمر
+c.orange=برتقالي
+c.yellow=أصفر
+c.green=أخضر
+c.teal=أزرق مخضر
+box.title=رف الملفات
+box.dropTitle=أفلت هنا على الرف!
+box.empty=الرف فارغ\nاسحب الملفات / الصور / الويب إلى هنا
+box.dropHere=أفلت هنا!
+box.hint=اسحب للخارج للنقل
+box.added=✓ أُضيف {0} عنصرًا إلى الرف
+box.failed=فشل جلب البيانات
+box.tip=رف ملفات DropFile:\n• اسحب الملفات أو الصور أو صفحات الويب إلى هذا الرف (من أي تطبيق).\n• تُحفظ الملفات في السلة ويمكنك إضافة المزيد.\n• اضغط زر ▾ في الأعلى لتحديد الملفات المسموح سحبها.\n• اسحب الملفات من الرف إلى مجلد أو تطبيق آخر لنقل المحدّدة.\n• اضغط ✕ للإغلاق والتنظيف.
+bk.header=السلة — {0} ملف — حدّد الملفات المسموح سحبها
+bk.itemTip=حدّد ليُسحب هذا الملف أيضًا
+bk.all=تحديد الكل
+bk.none=مسح التحديد
+bk.dragAll=سحب الكل
+bk.dragSel=سحب المحدّد
+bk.clear=مسح الكل
+s.title=إعدادات DropFile
+s.lang=اللغة
+s.boxes=الحد الأقصى لصناديق الإفلات
+s.size=حجم صندوق الإفلات
+s.hint=تُطبَّق التغييرات بعد الضغط على حفظ.
+s.save=حفظ
+s.cancel=إلغاء
+s.percent={0}%");
+            t["he"] = Parse(@"mw.title=DropFile — לוח ראשי
+mw.sub=לוח ראשי — גרירה ושחרור קבצים
+mw.on=● פעיל
+mw.off=○ לא פעיל
+mw.hintOn=תיבות ה-drop מוכנות: נער את הסמן (6 פעמים במהירות) כדי ליצור תיבה חדשה.
+mw.hintOff=האפשרות מושבתת. לחץ על כפתור «הפעל» למטה כדי להפעיל את תיבות ה-drop.
+mw.bOff=כיבוי האפשרות
+mw.bOn=הפעלת האפשרות
+mw.bNew=תיבת drop חדשה
+mw.bColor=הגדרות צבע...
+mw.bSettings=הגדרות...
+mw.bCloseAll=סגירת כל התיבות
+mw.bUninstall=הסרת DropFile...
+mw.bExit=יציאה
+b.open=פתיחת הלוח הראשי
+b.new=יצירת תיבת drop חדשה
+b.closeBox=סגירת התיבה הזו (מחיקת קבצים זמניים)
+b.feat=הפעלת אפשרות ה-drop
+b.top=תמיד למעלה
+b.start=הפעלה בעת התחברות
+b.uninstall=הסרת DropFile...
+b.exit=יציאה
+b.tray=DropFile — גרירה ושחרור קבצים
+b.notInstalled=DropFile לא מותקן. הפעל את DropFile.exe כדי להתקין.
+b.firstTitle=DropFile פעיל
+b.firstBody=נער את הסמן (6 פעמים מהר הלוך ושוב) כדי ליצור תיבת drop חדשה. לחץ לחיצה ימנית על תיבה או על סמל המגש לתפריט.
+b.onBody=אפשרות ה-drop הופעלה.
+b.offBody=אפשרות ה-drop כובתה. כל תיבות ה-drop נסגרו והקבצים הזמניים נמחקו.
+c.title=צבע תיבת ה-drop
+c.sys=לעקוב אחר צבע Windows
+c.sysTip=צבע התיבה עוקב אחר צבע המערכת
+c.use=שימוש בצבע {0}
+c.reset=איפוס לברירת מחדל
+c.blue=כחול
+c.indigo=כחול־סגול
+c.purple=סגול
+c.pink=ורוד
+c.red=אדום
+c.orange=כתום
+c.yellow=צהוב
+c.green=ירוק
+c.teal=טורקיז
+box.title=מדף מסמכים
+box.dropTitle=שחרר על המדף!
+box.empty=המדף ריק\nגרור קבצים / תמונות / אינטרנט לכאן
+box.dropHere=שחרר כאן!
+box.hint=גרור החוצה כדי להעביר
+box.added=✓ {0} פריטים נוספו למדף
+box.failed=שליפת הנתונים נכשלה
+box.tip=מדף המסמכים של DropFile:\n• גרור קבצים, תמונות או דפי אינטרנט למדף הזה (מאפליקציה כלשהי).\n• הקבצים שנכנסו נשמרים בסל; אפשר להמשיך להוסיף.\n• לחץ על כפתור ▾ בפינה העליונה כדי לסמן אילו קבצים ניתן לגרור החוצה.\n• גרור קבצים מהמדף לתיקייה או לאפליקציה אחרת כדי להעביר את המסומנים.\n• לחץ על ✕ כדי לסגור ולנקות.
+bk.header=סל — {0} קבצים — סמן אילו ניתן לגרור החוצה
+bk.itemTip=סמן כדי לכלול את הקובץ הזה בגרירה החוצה
+bk.all=בחירת הכל
+bk.none=ניקוי הבחירה
+bk.dragAll=גרירת הכל החוצה
+bk.dragSel=גרירת הנבחרים החוצה
+bk.clear=ניקוי הכול
+s.title=הגדרות DropFile
+s.lang=שפה
+s.boxes=מספר תיבות drop מרבי
+s.size=גודל תיבת ה-drop
+s.hint=השינויים יחולו לאחר לחיצה על שמירה.
+s.save=שמירה
+s.cancel=ביטול
+s.percent={0}%");
+            t["es"] = Parse(@"mw.title=DropFile — Panel principal
+mw.sub=Panel principal — arrastrar y soltar archivos
+mw.on=● Activo
+mw.off=○ Inactivo
+mw.hintOn=Las casillas de drop están listas: sacude el cursor (6 veces rápido) para crear una nueva.
+mw.hintOff=Función desactivada. Haz clic en el botón «Activar» de abajo para habilitar las casillas.
+mw.bOff=Desactivar función
+mw.bOn=Activar función
+mw.bNew=Nueva casilla de drop
+mw.bColor=Configuración de color...
+mw.bSettings=Configuración...
+mw.bCloseAll=Cerrar todas las casillas
+mw.bUninstall=Desinstalar DropFile...
+mw.bExit=Salir
+b.open=Abrir panel principal
+b.new=Crear nueva casilla de drop
+b.closeBox=Cerrar esta casilla (eliminar archivos temporales)
+b.feat=Activar función de drop
+b.top=Siempre visible
+b.start=Iniciar al iniciar sesión
+b.uninstall=Desinstalar DropFile...
+b.exit=Salir
+b.tray=DropFile — arrastrar y soltar archivos
+b.notInstalled=DropFile no está instalado. Ejecuta DropFile.exe para instalarlo.
+b.firstTitle=DropFile está activo
+b.firstBody=Sacude el cursor (6 veces rápido de un lado a otro) para crear una casilla nueva. Haz clic derecho en una casilla o en el icono de la bandeja para abrir el menú.
+b.onBody=La función de drop está activada.
+b.offBody=La función de drop está desactivada. Se cerraron todas las casillas y se eliminaron los archivos temporales.
+c.title=Color de la casilla de drop
+c.sys=Seguir el color de Windows
+c.sysTip=El color de la casilla sigue el color de énfasis del sistema
+c.use=Usar color {0}
+c.reset=Restablecer color predeterminado
+c.blue=Azul
+c.indigo=Índigo
+c.purple=Púrpura
+c.pink=Rosa
+c.red=Rojo
+c.orange=Naranja
+c.yellow=Amarillo
+c.green=Verde
+c.teal=Turquesa
+box.title=ESTANTE DE DOCUMENTOS
+box.dropTitle=¡SUÉLTALO EN EL ESTANTE!
+box.empty=El estante está vacío\nArrastra archivos / imágenes / web aquí
+box.dropHere=¡Suelta aquí!
+box.hint=Arrastra hacia fuera para mover
+box.added=✓ {0} elementos añadidos al estante
+box.failed=No se pudieron obtener los datos
+box.tip=Estante de documentos de DropFile:\n• Arrastra archivos, imágenes o páginas web a este estante (desde cualquier aplicación).\n• Los archivos guardados se quedan en la cesta; puedes seguir añadiendo.\n• Haz clic en el botón ▾ arriba a la derecha para marcar qué archivos se pueden arrastrar fuera.\n• Arrastra archivos del estante a otra carpeta o aplicación para mover los marcados.\n• Haz clic en ✕ para cerrar y limpiar el estante.
+bk.header=Cesta — {0} archivos — marca los que se pueden arrastrar fuera
+bk.itemTip=Marca para incluir este archivo al arrastrar fuera
+bk.all=Seleccionar todo
+bk.none=Vaciar selección
+bk.dragAll=Arrastrar todo fuera
+bk.dragSel=Arrastrar fuera (seleccionados)
+bk.clear=Limpiar todo
+s.title=Configuración de DropFile
+s.lang=Idioma
+s.boxes=Máximo de casillas de drop
+s.size=Tamaño de la casilla de drop
+s.hint=Los cambios se aplican después de guardar.
+s.save=Guardar
+s.cancel=Cancelar
+s.percent={0}%");
+            t["fr"] = Parse(@"mw.title=DropFile — Panneau principal
+mw.sub=Panneau principal — glisser-déposer des fichiers
+mw.on=● Actif
+mw.off=○ Inactif
+mw.hintOn=Les zones de dépôt sont prêtes : secouez le curseur (6 fois rapidement) pour en créer une nouvelle.
+mw.hintOff=Fonction désactivée. Cliquez sur le bouton « Activer » ci-dessous pour activer les zones de dépôt.
+mw.bOff=Désactiver la fonction
+mw.bOn=Activer la fonction
+mw.bNew=Nouvelle zone de dépôt
+mw.bColor=Paramètres de couleur...
+mw.bSettings=Paramètres...
+mw.bCloseAll=Fermer toutes les zones
+mw.bUninstall=Désinstaller DropFile...
+mw.bExit=Quitter
+b.open=Ouvrir le panneau principal
+b.new=Créer une nouvelle zone de dépôt
+b.closeBox=Fermer cette zone (supprimer les fichiers temporaires)
+b.feat=Activer la fonction de dépôt
+b.top=Toujours au premier plan
+b.start=Démarrer à la connexion
+b.uninstall=Désinstaller DropFile...
+b.exit=Quitter
+b.tray=DropFile — glisser-déposer des fichiers
+b.notInstalled=DropFile n'est pas installé. Lancez DropFile.exe pour l'installer.
+b.firstTitle=DropFile est actif
+b.firstBody=Secouez le curseur (6 fois rapidement d'un bord à l'autre) pour créer une nouvelle zone. Faites un clic droit sur une zone ou l'icône de la zone de notification pour ouvrir le menu.
+b.onBody=La fonction de dépôt est activée.
+b.offBody=La fonction de dépôt est désactivée. Toutes les zones ont été fermées et les fichiers temporaires supprimés.
+c.title=Couleur de la zone de dépôt
+c.sys=Suivre la couleur de Windows
+c.sysTip=La couleur de la zone suit la couleur d'accentuation du système
+c.use=Utiliser la couleur {0}
+c.reset=Rétablir la couleur par défaut
+c.blue=Bleu
+c.indigo=Indigo
+c.purple=Violet
+c.pink=Rose
+c.red=Rouge
+c.orange=Orange
+c.yellow=Jaune
+c.green=Vert
+c.teal=Sarcelle
+box.title=ÉTAGÈRE DE DOCUMENTS
+box.dropTitle=DÉPOSEZ SUR L'ÉTAGÈRE !
+box.empty=L'étagère est vide\nFaites glisser fichiers / images / web ici
+box.dropHere=Déposez ici !
+box.hint=Faites glisser vers l'extérieur pour déplacer
+box.added=✓ {0} éléments ajoutés à l'étagère
+box.failed=Échec de la récupération des données
+box.tip=Étagère de documents DropFile :\n• Faites glisser des fichiers, images ou pages web sur cette étagère (depuis n'importe quelle application).\n• Les fichiers déposés restent dans le panier ; vous pouvez continuer à en ajouter.\n• Cliquez sur le bouton ▾ en haut à droite pour cocher les fichiers à faire glisser.\n• Faites glisser les fichiers de l'étagère vers un autre dossier ou une autre application pour les déplacer.\n• Cliquez sur ✕ pour fermer et nettoyer.
+bk.header=Panier — {0} fichiers — cochez ceux à faire glisser
+bk.itemTip=Cochez pour inclure ce fichier lors du glissement
+bk.all=Tout sélectionner
+bk.none=Effacer la sélection
+bk.dragAll=Tout faire glisser
+bk.dragSel=Faire glisser (sélectionnés)
+bk.clear=Tout effacer
+s.title=Paramètres de DropFile
+s.lang=Langue
+s.boxes=Nombre maximal de zones de dépôt
+s.size=Taille de la zone de dépôt
+s.hint=Les modifications s'appliquent après avoir cliqué sur Enregistrer.
+s.save=Enregistrer
+s.cancel=Annuler
+s.percent={0}%");
+            t["de"] = Parse(@"mw.title=DropFile — Hauptpanel
+mw.sub=Hauptpanel — Dateien per Drag & Drop
+mw.on=● Aktiv
+mw.off=○ Inaktiv
+mw.hintOn=Drop-Boxen sind bereit: Bewegen Sie den Cursor 6-mal schnell, um eine neue Box zu erzeugen.
+mw.hintOff=Funktion deaktiviert. Klicken Sie unten auf „Aktivieren“, um Drop-Boxen einzuschalten.
+mw.bOff=Funktion ausschalten
+mw.bOn=Funktion einschalten
+mw.bNew=Neue Drop-Box
+mw.bColor=Farbeinstellungen...
+mw.bSettings=Einstellungen...
+mw.bCloseAll=Alle Boxen schließen
+mw.bUninstall=DropFile deinstallieren...
+mw.bExit=Beenden
+b.open=Hauptpanel öffnen
+b.new=Neue Drop-Box erstellen
+b.closeBox=Diese Box schließen (Temporärdateien löschen)
+b.feat=Drop-Funktion aktivieren
+b.top=Immer im Vordergrund
+b.start=Bei der Anmeldung starten
+b.uninstall=DropFile deinstallieren...
+b.exit=Beenden
+b.tray=DropFile — Dateien per Drag & Drop
+b.notInstalled=DropFile ist nicht installiert. Führen Sie DropFile.exe aus, um es zu installieren.
+b.firstTitle=DropFile ist aktiv
+b.firstBody=Bewegen Sie den Cursor 6-mal schnell hin und her, um eine neue Drop-Box zu erstellen. Ein Rechtsklick auf eine Box oder das Tray-Symbol öffnet das Menü.
+b.onBody=Die Drop-Funktion ist jetzt eingeschaltet.
+b.offBody=Die Drop-Funktion ist jetzt ausgeschaltet. Alle Drop-Boxen wurden geschlossen und temporäre Dateien gelöscht.
+c.title=Farbe der Drop-Box
+c.sys=Windows-Farbe folgen
+c.sysTip=Die Boxfarbe folgt der Akzentfarbe des Systems
+c.use=Farbe {0} verwenden
+c.reset=Standardfarbe wiederherstellen
+c.blue=Blau
+c.indigo=Indigo
+c.purple=Lila
+c.pink=Rosa
+c.red=Rot
+c.orange=Orange
+c.yellow=Gelb
+c.green=Grün
+c.teal=Türkis
+box.title=DOKUMENTENREGAL
+box.dropTitle=AUF DAS REGAL LEGEN!
+box.empty=Regal ist leer\nDateien / Bilder / Web hierher ziehen
+box.dropHere=Hier ablegen!
+box.hint=Nach draußen ziehen zum Verschieben
+box.added=✓ {0} Elemente zum Regal hinzugefügt
+box.failed=Daten konnten nicht abgerufen werden
+box.tip=DropFile Dokumentenregal:\n• Ziehen Sie Dateien, Bilder oder Webseiten in dieses Regal (aus jeder Anwendung).\n• Abgelegte Dateien bleiben im Korb; Sie können weiter hinzufügen.\n• Klicken Sie oben rechts auf ▾, um zu markieren, welche Dateien herausgezogen werden dürfen.\n• Ziehen Sie Dateien vom Regal in einen anderen Ordner oder eine andere Anwendung.\n• Klicken Sie auf ✕, um zu schließen und aufzuräumen.
+bk.header=Korb — {0} Dateien — markieren, welche herausgezogen werden dürfen
+bk.itemTip=Markieren, um diese Datei mit herauszuziehen
+bk.all=Alle auswählen
+bk.none=Auswahl aufheben
+bk.dragAll=Alle herausziehen
+bk.dragSel=Ausgewählte herausziehen
+bk.clear=Alles löschen
+s.title=DropFile-Einstellungen
+s.lang=Sprache
+s.boxes=Maximale Anzahl Drop-Boxen
+s.size=Größe der Drop-Box
+s.hint=Änderungen werden nach dem Speichern übernommen.
+s.save=Speichern
+s.cancel=Abbrechen
+s.percent={0}%");
+            t["ru"] = Parse(@"mw.title=DropFile — Главная панель
+mw.sub=Главная панель — перетаскивание файлов
+mw.on=● Включено
+mw.off=○ Выключено
+mw.hintOn=Коробки готовы: быстро покрутите курсор 6 раз, чтобы создать новую коробку.
+mw.hintOff=Функция отключена. Нажмите кнопку «Включить» ниже, чтобы активировать коробки.
+mw.bOff=Выключить функцию
+mw.bOn=Включить функцию
+mw.bNew=Новая коробка
+mw.bColor=Настройки цвета...
+mw.bSettings=Параметры...
+mw.bCloseAll=Закрыть все коробки
+mw.bUninstall=Удалить DropFile...
+mw.bExit=Выход
+b.open=Открыть главную панель
+b.new=Создать новую коробку
+b.closeBox=Закрыть эту коробку (удалить временные файлы)
+b.feat=Включить функцию перетаскивания
+b.top=Всегда поверх
+b.start=Запуск при входе
+b.uninstall=Удалить DropFile...
+b.exit=Выход
+b.tray=DropFile — перетаскивание файлов
+b.notInstalled=DropFile не установлен. Запустите DropFile.exe для установки.
+b.firstTitle=DropFile включён
+b.firstBody=Покрутите курсор 6 раз взад-вперёд, чтобы создать новую коробку. Правый клик по коробке или значку в трее откроет меню.
+b.onBody=Функция перетаскивания включена.
+b.offBody=Функция перетаскивания выключена. Все коробки закрыты, временные файлы удалены.
+c.title=Цвет коробки
+c.sys=Следовать цвету Windows
+c.sysTip=Цвет коробки следует за цветом системы
+c.use=Использовать цвет {0}
+c.reset=Сбросить на цвет по умолчанию
+c.blue=Синий
+c.indigo=Индиго
+c.purple=Фиолетовый
+c.pink=Розовый
+c.red=Красный
+c.orange=Оранжевый
+c.yellow=Жёлтый
+c.green=Зелёный
+c.teal=Бирюзовый
+box.title=ПОЛКА ДЛЯ ДОКУМЕНТОВ
+box.dropTitle=ПОЛОЖИТЕ НА ПОЛКУ!
+box.empty=Полка пуста\nПеретащите файлы / изображения / веб сюда
+box.dropHere=Положите сюда!
+box.hint=Перетащите наружу, чтобы переместить
+box.added=✓ Добавлено на полку: {0}
+box.failed=Не удалось получить данные
+box.tip=Полка документов DropFile:\n• Перетаскивайте файлы, изображения и веб-страницы на эту полку (из любого приложения).\n• Файлы хранятся в корзине; можно добавлять новые.\n• Нажмите ▾ справа вверху, чтобы отметить файлы, которые можно перетащить.\n• Перетащите файлы с полки в другую папку или приложение.\n• Нажмите ✕, чтобы закрыть и очистить полку.
+bk.header=Корзина — {0} файлов — отметьте, какие можно перетащить
+bk.itemTip=Отметьте, чтобы включить файл при перетаскивании
+bk.all=Выбрать все
+bk.none=Снять выбор
+bk.dragAll=Перетащить всё
+bk.dragSel=Перетащить (отмеченные)
+bk.clear=Очистить всё
+s.title=Параметры DropFile
+s.lang=Язык
+s.boxes=Максимум коробок
+s.size=Размер коробки
+s.hint=Изменения применяются после нажатия «Сохранить».
+s.save=Сохранить
+s.cancel=Отмена
+s.percent={0}%");
+            t["pt"] = Parse(@"mw.title=DropFile — Painel principal
+mw.sub=Painel principal — arrastar e soltar arquivos
+mw.on=● Ativo
+mw.off=○ Inativo
+mw.hintOn=As caixas de drop estão prontas: sacuda o cursor (6 vezes rápido) para criar uma nova.
+mw.hintOff=Recurso desativado. Clique no botão “Ativar” abaixo para ligar as caixas de drop.
+mw.bOff=Desativar recurso
+mw.bOn=Ativar recurso
+mw.bNew=Nova caixa de drop
+mw.bColor=Configurações de cor...
+mw.bSettings=Configurações...
+mw.bCloseAll=Fechar todas as caixas
+mw.bUninstall=Desinstalar DropFile...
+mw.bExit=Sair
+b.open=Abrir painel principal
+b.new=Criar nova caixa de drop
+b.closeBox=Fechar esta caixa (excluir arquivos temporários)
+b.feat=Ativar recurso de drop
+b.top=Sempre no topo
+b.start=Iniciar ao entrar no Windows
+b.uninstall=Desinstalar DropFile...
+b.exit=Sair
+b.tray=DropFile — arrastar e soltar arquivos
+b.notInstalled=DropFile não está instalado. Execute DropFile.exe para instalar.
+b.firstTitle=DropFile está ativo
+b.firstBody=Sacuda o cursor (6 vezes rápido de um lado ao outro) para criar uma nova caixa de drop. Clique com o botão direito na caixa ou no ícone da bandeja para abrir o menu.
+b.onBody=O recurso de drop está ativado.
+b.offBody=O recurso de drop está desativado. Todas as caixas foram fechadas e os arquivos temporários removidos.
+c.title=Cor da caixa de drop
+c.sys=Seguir a cor do Windows
+c.sysTip=A cor da caixa segue a cor de destaque do sistema
+c.use=Usar a cor {0}
+c.reset=Redefinir para a cor padrão
+c.blue=Azul
+c.indigo=Índigo
+c.purple=Roxo
+c.pink=Rosa
+c.red=Vermelho
+c.orange=Laranja
+c.yellow=Amarelo
+c.green=Verde
+c.teal=Verde-azulado
+box.title=PRATELEIRA DE DOCUMENTOS
+box.dropTitle=SOLTE NA PRATELEIRA!
+box.empty=A prateleira está vazia\nArraste arquivos / imagens / web para cá
+box.dropHere=Solte aqui!
+box.hint=Arraste para fora para mover
+box.added=✓ {0} itens adicionados à prateleira
+box.failed=Falha ao obter os dados
+box.tip=Prateleira de documentos do DropFile:\n• Arraste arquivos, imagens ou páginas web para esta prateleira (de qualquer aplicativo).\n• Os arquivos ficam na cesta; você pode continuar adicionando.\n• Clique no botão ▾ no canto superior direito para marcar quais arquivos podem ser arrastados para fora.\n• Arraste arquivos da prateleira para outra pasta ou aplicativo para mover os marcados.\n• Clique em ✕ para fechar e limpar.
+bk.header=Cesta — {0} arquivos — marque os que podem ser arrastados
+bk.itemTip=Marque para incluir este arquivo ao arrastar para fora
+bk.all=Selecionar tudo
+bk.none=Limpar seleção
+bk.dragAll=Arrastar tudo para fora
+bk.dragSel=Arrastar para fora (selecionados)
+bk.clear=Limpar tudo
+s.title=Configurações do DropFile
+s.lang=Idioma
+s.boxes=Máximo de caixas de drop
+s.size=Tamanho da caixa de drop
+s.hint=As alterações são aplicadas depois de clicar em Salvar.
+s.save=Salvar
+s.cancel=Cancelar
+s.percent={0}%");
+            t["ko"] = Parse(@"mw.title=DropFile — 메인 패널
+mw.sub=메인 패널 — 파일 드래그 앤 드롭
+mw.on=● 켜짐
+mw.off=○ 꺼짐
+mw.hintOn=드롭 상자가 준비되었습니다. 커서를 빠르게 6번 흔들면 새 상자가 나타납니다.
+mw.hintOff=기능이 꺼져 있습니다. 아래의 “켜기” 버튼을 눌러 드롭 상자를 활성화하세요.
+mw.bOff=기능 끄기
+mw.bOn=기능 켜기
+mw.bNew=새 드롭 상자
+mw.bColor=색 설정...
+mw.bSettings=설정...
+mw.bCloseAll=모든 상자 닫기
+mw.bUninstall=DropFile 제거...
+mw.bExit=종료
+b.open=메인 패널 열기
+b.new=드롭 상자 만들기
+b.closeBox=이 상자 닫기 (임시 파일 삭제)
+b.feat=드롭 기능 활성화
+b.top=항상 위에 유지
+b.start=로그온 시 시작
+b.uninstall=DropFile 제거...
+b.exit=종료
+b.tray=DropFile — 파일 드래그 앤 드롭
+b.notInstalled=DropFile가 설치되어 있지 않습니다. DropFile.exe를 실행해 설치하세요.
+b.firstTitle=DropFile이 실행 중입니다
+b.firstBody=커서를 빠르게 6번 좌우로 흔들면 새 드롭 상자가 만들어집니다. 상자나 트레이 아이콘을 마우스 오른쪽 버튼으로 누르면 메뉴가 열립니다.
+b.onBody=드롭 기능이 켜졌습니다.
+b.offBody=드롭 기능이 꺼졌습니다. 모든 드롭 상자를 닫고 임시 파일을 삭제했습니다.
+c.title=드롭 상자 색상
+c.sys=Windows 색상 따르기
+c.sysTip=상자 색상이 시스템 강조 색상을 따릅니다.
+c.use={0} 색상 사용
+c.reset=기본 색상으로 초기화
+c.blue=파랑
+c.indigo=인디고
+c.purple=보라
+c.pink=분홍
+c.red=빨강
+c.orange=주황
+c.yellow=노랑
+c.green=초록
+c.teal=청록
+box.title=문서 선반
+box.dropTitle=선반 위에 놓으세요!
+box.empty=선반이 비어 있습니다\n파일 / 이미지 / 웹을 여기로 드래그하세요
+box.dropHere=여기에 놓기!
+box.hint=밖으로 드래그하면 이동
+box.added=✓ {0}개 항목이 선반에 추가되었습니다
+box.failed=데이터를 가져오지 못했습니다
+box.tip=DropFile 문서 선반:\n• 어떤 앱에서든 파일, 이미지, 웹 페이지를 이 선반으로 드래그하세요.\n• 넣은 파일은 바구니에 보관되며 계속 추가할 수 있습니다.\n• 오른쪽 위 ▾ 버튼을 눌러 밖으로 드릴 파일을 선택(체크)하세요.\n• 선반에서 다른 폴더나 앱으로 드래그하면 체크한 파일이 이동합니다.\n• ✕를 눌러 닫고 정리하세요.
+bk.header=바구니 — {0}개 파일 — 밖으로 드릴 파일을 선택하세요
+bk.itemTip=체크하면 이 파일도 함께 드래그됩니다
+bk.all=모두 선택
+bk.none=선택 해제
+bk.dragAll=모두 밖으로 드래그
+bk.dragSel=선택한 항목 드래그
+bk.clear=모두 지우기
+s.title=DropFile 설정
+s.lang=언어
+s.boxes=드롭 상자 최대 개수
+s.size=드롭 상자 크기
+s.hint=변경 사항은 저장을 누른 후 적용됩니다.
+s.save=저장
+s.cancel=취소
+s.percent={0}%");
+            return t;
+        }
+
+        public static void Set(string code)
+        {
+            string c = Normalize(code);
+            Code = c;
+        }
+
+        public static string T(string key, params object[] args)
+        {
+            return Lookup(Code, key, args);
+        }
+
+        public static string Tc(string code, string key, params object[] args)
+        {
+            return Lookup(Normalize(code), key, args);
+        }
+
+        public static string NameOf(string code)
+        {
+            for (int i = 0; i < Codes.Length; i++)
+            {
+                if (Codes[i] == code) return Names[i];
+            }
+            return Names[0];
+        }
+
+        public static int IndexOfCode(string code)
+        {
+            for (int i = 0; i < Codes.Length; i++)
+            {
+                if (Codes[i] == code) return i;
+            }
+            return 0;
+        }
+
+        private static string Normalize(string code)
+        {
+            string c = code == null ? "" : code.Trim().ToLowerInvariant();
+            if (c.Length == 0) c = "en";
+            return Tables.ContainsKey(c) ? c : "en";
+        }
+
+        private static string Lookup(string code, string key, object[] args)
+        {
+            Dictionary<string, string> table;
+            if (!Tables.TryGetValue(code, out table)) table = Tables["en"];
+            string s;
+            if (!table.TryGetValue(key, out s))
+            {
+                if (!Tables["en"].TryGetValue(key, out s)) s = key;
+            }
+            if (args != null && args.Length > 0)
+            {
+                try { s = string.Format(s, args); }
+                catch { }
+            }
+            return s;
+        }
+
+        private static Dictionary<string, string> Parse(string block)
+        {
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string raw in block.Split('\n'))
+            {
+                string l = raw.Trim('\r');
+                if (l.Length == 0) continue;
+                int idx = l.IndexOf('=');
+                if (idx <= 0) continue;
+                string k = l.Substring(0, idx).Trim();
+                if (k.Length == 0 || map.ContainsKey(k)) continue;
+                map[k] = l.Substring(idx + 1).Replace("\\n", "\n");
+            }
+            return map;
+        }
+    }
+
     internal class Settings
     {
         public bool FeatureEnabled = true;
@@ -526,6 +1416,9 @@ namespace DropFile
         public bool IsFirstRun;
         public string AccentMode = "system";   // "system" = ikuti warna Windows, "custom" = hex
         public string AccentHex = "#34B4FF";
+        public int MaxBoxes = 8;
+        public int BoxScale = 100;
+        public string Language = "en";
 
         private readonly string configFile;
 
@@ -565,6 +1458,9 @@ namespace DropFile
                     else if (k == "startup") StartWithWindows = ParseBool(v, true);
                     else if (k == "accentmode") AccentMode = v;
                     else if (k == "accenthex") AccentHex = v;
+                    else if (k == "maxboxes") MaxBoxes = ClampInt(v, 1, 16, 8);
+                    else if (k == "boxscale") BoxScale = ClampInt(v, 60, 180, 100);
+                    else if (k == "lang") Language = v.Trim().ToLowerInvariant();
                 }
             }
             catch { }
@@ -574,6 +1470,15 @@ namespace DropFile
         {
             bool r;
             return bool.TryParse(v, out r) ? r : dflt;
+        }
+
+        private static int ClampInt(string v, int min, int max, int dflt)
+        {
+            int r;
+            if (!int.TryParse(v, out r)) return dflt;
+            if (r < min) return min;
+            if (r > max) return max;
+            return r;
         }
 
         public void Save()
@@ -586,6 +1491,9 @@ namespace DropFile
                 sb.Append("startup=").AppendLine(StartWithWindows ? "True" : "False");
                 sb.Append("accentmode=").AppendLine(AccentMode);
                 sb.Append("accenthex=").AppendLine(AccentHex);
+                sb.Append("maxboxes=").AppendLine(MaxBoxes.ToString());
+                sb.Append("boxscale=").AppendLine(BoxScale.ToString());
+                sb.Append("lang=").AppendLine(Language);
                 File.WriteAllText(configFile, sb.ToString());
             }
             catch { }
@@ -817,8 +1725,6 @@ namespace DropFile
 
     internal class AppContext : ApplicationContext
     {
-        private const int MaxBoxes = 8;
-
         private readonly Settings settings;
         private readonly System.Collections.Generic.List<DropWindow> boxes =
             new System.Collections.Generic.List<DropWindow>();
@@ -827,6 +1733,7 @@ namespace DropFile
         private Icon appIcon;
         private bool isClosing;
         private MainWindow mainWindow;
+        private SettingsForm settingsForm;
         private bool showMainRequested;
 
         public Settings AppSettings { get { return settings; } }
@@ -878,92 +1785,69 @@ namespace DropFile
             }
         }
 
-        internal void ShowColorMenu(Control owner, Point location)
+        internal void ShowSettingsForm()
         {
-            Settings s = settings;
-            var menu = new ContextMenuStrip();
-            menu.Renderer = new DropWindow.MaterialMenuRenderer();
-            menu.ShowImageMargin = true;
-            menu.Font = new Font("Segoe UI", 9f);
+            if (isClosing) return;
 
-            var header = new ToolStripMenuItem("Warna Kotak Drop") { Enabled = false };
-            menu.Items.Add(header);
-            menu.Items.Add(new ToolStripSeparator());
-
-            var sys = new ToolStripMenuItem("Ikuti warna Windows") { Checked = s.AccentMode == "system" };
-            sys.ToolTipText = "Warna kotak mengikuti aksen warna sistem operasi";
-            sys.Click += delegate
+            // Satu jendela Settings saja: kalau sudah terbuka, fokuskan yang ada.
+            if (settingsForm != null && !settingsForm.IsDisposed)
             {
-                s.AccentMode = "system";
-                s.Save();
-                ApplyTheme();
-            };
-            menu.Items.Add(sys);
-
-            menu.Items.Add(new ToolStripSeparator());
-
-            string[] presets =
-            {
-                "Biru", "#34B4FF",
-                "Indigo", "#5B8DEF",
-                "Ungu", "#A884F5",
-                "Merah Muda", "#F075A8",
-                "Merah", "#F2555A",
-                "Oranye", "#FF9F43",
-                "Kuning", "#F7C948",
-                "Hijau", "#4CC38A",
-                "Toska", "#2EC4B6"
-            };
-
-            bool isCustom = s.AccentMode == "custom";
-            for (int i = 0; i < presets.Length; i += 2)
-            {
-                string label = presets[i];
-                string hex = presets[i + 1];
-                string norm = hex.TrimStart('#').ToUpperInvariant();
-                bool active = isCustom && string.Equals(
-                    s.AccentHex.TrimStart('#').ToUpperInvariant(), norm,
-                    StringComparison.OrdinalIgnoreCase);
-
-                Color swatchColor = Color.FromArgb(
-                    Convert.ToInt32(norm.Substring(0, 2), 16),
-                    Convert.ToInt32(norm.Substring(2, 2), 16),
-                    Convert.ToInt32(norm.Substring(4, 2), 16));
-
-                var mi = new ToolStripMenuItem((active ? "✓ " : "") + label)
-                {
-                    Image = DropWindow.MakeSwatch(swatchColor),
-                    ToolTipText = "Gunakan warna " + label.ToLowerInvariant()
-                };
-                string capturedHex = hex;
-                mi.Click += delegate
-                {
-                    s.AccentMode = "custom";
-                    s.AccentHex = capturedHex;
-                    s.Save();
-                    ApplyTheme();
-                };
-                menu.Items.Add(mi);
+                if (!settingsForm.Visible) settingsForm.Show();
+                if (settingsForm.WindowState == FormWindowState.Minimized)
+                    settingsForm.WindowState = FormWindowState.Normal;
+                settingsForm.Activate();
+                settingsForm.BringToFront();
+                return;
             }
 
-            menu.Items.Add(new ToolStripSeparator());
-
-            var reset = new ToolStripMenuItem("Reset ke warna bawaan");
-            reset.Click += delegate
-            {
-                s.AccentMode = "system";
-                s.AccentHex = "#34B4FF";
-                s.Save();
-                ApplyTheme();
-            };
-            menu.Items.Add(reset);
-
-            menu.Show(owner, location);
+            settingsForm = new SettingsForm(this);
+            settingsForm.FormClosed += delegate { settingsForm = null; };
+            settingsForm.Show();
         }
+
+        // Terapkan hasil Settings: bahasa, jumlah kotak, ukuran kotak.
+        internal void ApplySettings()
+        {
+            Lang.Set(settings.Language);
+
+            while (boxes.Count > settings.MaxBoxes)
+            {
+                DropWindow b = boxes[boxes.Count - 1];
+                try { b.CloseBox(); }
+                catch { }
+                if (boxes.Contains(b)) boxes.Remove(b);
+            }
+
+            foreach (DropWindow b in boxes)
+            {
+                try { b.ApplySize(); }
+                catch { }
+            }
+
+            try { tray.Text = Lang.T("b.tray"); }
+            catch { }
+
+            if (mainWindow != null && !mainWindow.IsDisposed) mainWindow.RefreshUi();
+        }
+
+        // Preset warna aksen (dipakai jendela Settings).
+        internal static readonly string[] AccentPresets =
+        {
+            "blue", "#34B4FF",
+            "indigo", "#5B8DEF",
+            "purple", "#A884F5",
+            "pink", "#F075A8",
+            "red", "#F2555A",
+            "orange", "#FF9F43",
+            "yellow", "#F7C948",
+            "green", "#4CC38A",
+            "teal", "#2EC4B6"
+        };
 
         public AppContext(bool showMainOnLaunch)
         {
             settings = new Settings();
+            Lang.Set(settings.Language);
             shaker = new MouseShaker();
             shaker.ShakeDetected += OnShake;
             appIcon = IconFactory.Create();
@@ -986,8 +1870,8 @@ namespace DropFile
 
             if (settings.IsFirstRun && settings.FeatureEnabled)
             {
-                tray.ShowBalloonTip(6000, "DropFile aktif",
-                    "Goyangkan kursor (geser cepat bolak-balik 6x) untuk membuat kotak drop baru. Klik kanan kotak/ikon tray untuk menu.",
+                tray.ShowBalloonTip(6000, Lang.T("b.firstTitle"),
+                    Lang.T("b.firstBody"),
                     ToolTipIcon.Info);
             }
 
@@ -1005,7 +1889,7 @@ namespace DropFile
 
         internal void CreateBox()
         {
-            if (boxes.Count >= MaxBoxes) return;
+            if (boxes.Count >= settings.MaxBoxes) return;
             var w = new DropWindow(this);
             boxes.Add(w);
             w.ShowWindow();
@@ -1042,11 +1926,11 @@ namespace DropFile
             if (mainWindow != null && !mainWindow.IsDisposed) mainWindow.RefreshUi();
             if (settings.FeatureEnabled)
             {
-                tray.ShowBalloonTip(2000, "DropFile", "Fitur drop aktif.", ToolTipIcon.Info);
+                tray.ShowBalloonTip(2000, "DropFile", Lang.T("b.onBody"), ToolTipIcon.Info);
             }
             else
             {
-                tray.ShowBalloonTip(2000, "DropFile", "Fitur drop dimatikan. Semua kotak drop ditutup dan file sementara dihapus.", ToolTipIcon.Info);
+                tray.ShowBalloonTip(2000, "DropFile", Lang.T("b.offBody"), ToolTipIcon.Info);
             }
         }
 
@@ -1106,7 +1990,7 @@ namespace DropFile
         {
             if (!IsInstalled())
             {
-                MessageBox.Show("DropFile belum terinstal. Jalankan DropFile.exe untuk menginstal.",
+                MessageBox.Show(Lang.T("b.notInstalled"),
                     "DropFile", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -1156,39 +2040,43 @@ namespace DropFile
         {
             m.Items.Clear();
 
-            var main = new ToolStripMenuItem("Buka Panel Utama");
+            var main = new ToolStripMenuItem(Lang.T("b.open"));
             main.Click += delegate { ShowMainWindow(); };
             m.Items.Add(main);
 
-            var create = new ToolStripMenuItem("Buat kotak drop baru");
+            var create = new ToolStripMenuItem(Lang.T("b.new"));
             create.Click += delegate { CreateBox(); };
             m.Items.Add(create);
 
-            var close = new ToolStripMenuItem("Tutup kotak ini (hapus file sementara)") { Enabled = owner != null };
+            var close = new ToolStripMenuItem(Lang.T("b.closeBox")) { Enabled = owner != null };
             close.Click += delegate { if (owner != null) owner.CloseBox(); };
             m.Items.Add(close);
 
             m.Items.Add(new ToolStripSeparator());
 
-            var feat = new ToolStripMenuItem("Aktifkan fitur drop") { Checked = settings.FeatureEnabled };
+            var feat = new ToolStripMenuItem(Lang.T("b.feat")) { Checked = settings.FeatureEnabled };
             feat.Click += delegate { ToggleFeature(); };
             m.Items.Add(feat);
 
-            var top = new ToolStripMenuItem("Selalu di atas") { Checked = settings.AlwaysOnTop };
+            var top = new ToolStripMenuItem(Lang.T("b.top")) { Checked = settings.AlwaysOnTop };
             top.Click += delegate { ToggleAlwaysOnTop(); };
             m.Items.Add(top);
 
-            var start = new ToolStripMenuItem("Mulai saat login") { Checked = settings.StartWithWindows, Enabled = IsInstalled() };
+            var start = new ToolStripMenuItem(Lang.T("b.start")) { Checked = settings.StartWithWindows, Enabled = IsInstalled() };
             start.Click += delegate { ToggleStartup(); };
             m.Items.Add(start);
 
             m.Items.Add(new ToolStripSeparator());
 
-            var un = new ToolStripMenuItem("Hapus instalasi DropFile...") { Enabled = IsInstalled() };
+            var settingsItem = new ToolStripMenuItem(Lang.T("mw.bSettings"));
+            settingsItem.Click += delegate { ShowSettingsForm(); };
+            m.Items.Add(settingsItem);
+
+            var un = new ToolStripMenuItem(Lang.T("b.uninstall")) { Enabled = IsInstalled() };
             un.Click += delegate { Uninstall(); };
             m.Items.Add(un);
 
-            var exit = new ToolStripMenuItem("Keluar");
+            var exit = new ToolStripMenuItem(Lang.T("b.exit"));
             exit.Click += delegate { Exit(); };
             m.Items.Add(exit);
         }
@@ -1197,7 +2085,7 @@ namespace DropFile
         {
             tray = new NotifyIcon();
             tray.Icon = appIcon;
-            tray.Text = "DropFile — drag & drop file";
+            tray.Text = Lang.T("b.tray");
             tray.Visible = true;
             tray.ContextMenuStrip = MakeMenu(boxes.Count > 0 ? boxes[0] : null);
             tray.DoubleClick += delegate { ShowMainWindow(); };
@@ -1207,7 +2095,7 @@ namespace DropFile
         {
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "DropFile");
+                "Programs", "DropFile");
         }
 
         private bool IsInstalled()
@@ -1246,11 +2134,11 @@ namespace DropFile
         public MainWindow(AppContext app)
         {
             this.app = app;
-            Text = "DropFile — Panel Utama";
+            Text = Lang.T("mw.title");
             Icon = IconFactory.Create();
-            ClientSize = new Size(380, 470);
-            MinimumSize = new Size(380, 470);
-            MaximumSize = new Size(380, 470);
+            ClientSize = new Size(380, 480);
+            MinimumSize = new Size(380, 480);
+            MaximumSize = new Size(380, 480);
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = MaterialColors.SurfaceContainerLow;
@@ -1272,6 +2160,7 @@ namespace DropFile
 
         public void RefreshUi()
         {
+            Text = Lang.T("mw.title");
             Invalidate();
         }
 
@@ -1313,7 +2202,7 @@ namespace DropFile
             using (var gray = new SolidBrush(MaterialColors.OnSurfaceVariant))
             {
                 g.DrawString("DropFile", titleFont, white, 72, 18);
-                g.DrawString("Panel utama — seret & tempel file", subFont, gray, 72, 46);
+                g.DrawString(Lang.T("mw.sub"), subFont, gray, 72, 46);
             }
 
             DrawCloseButton(g);
@@ -1331,13 +2220,11 @@ namespace DropFile
                 {
                     g.FillEllipse(glowBrush, dotX - 5, dotY - 5, dotSize + 10, dotSize + 10);
                 }
-                g.DrawString(on ? "● Aktif" : "○ Nonaktif", statusFont, statBrush, 40, 88);
+                g.DrawString(on ? Lang.T("mw.on") : Lang.T("mw.off"), statusFont, statBrush, 40, 88);
             }
             using (var gray = new SolidBrush(MaterialColors.OnSurfaceVariant))
             {
-                g.DrawString(on
-                    ? "Kotak drop siap dipanggil: goyangkan kursor (6x cepat) untuk memunculkan kotak baru."
-                    : "Fitur dimatikan. Klik tombol \"Nyalakan\" di bawah untuk mengaktifkan kotak drop.",
+                g.DrawString(on ? Lang.T("mw.hintOn") : Lang.T("mw.hintOff"),
                     hintFont, gray, new RectangleF(24, 112, Width - 48, 36));
             }
 
@@ -1345,13 +2232,13 @@ namespace DropFile
             _buttonRects.Clear();
             _buttonActions.Clear();
             int y = 156;
-            if (on) y = DrawButton(g, y, "Matikan Fitur", ButtonKind.Primary, new Action(ToggleOff));
-            else y = DrawButton(g, y, "Nyalakan Fitur", ButtonKind.Primary, new Action(ToggleOn));
-            y = DrawButton(g, y, "Buat Kotak Drop Baru", ButtonKind.Secondary, new Action(CreateBox));
-            y = DrawButton(g, y, "Pengaturan Warna...", ButtonKind.Secondary, new Action(ShowColor));
-            y = DrawButton(g, y, "Tutup Semua Kotak", ButtonKind.Secondary, new Action(CloseAllBoxes));
-            y = DrawButton(g, y, "Hapus Instalasi DropFile...", ButtonKind.Danger, new Action(Uninstall));
-            DrawButton(g, y, "Keluar", ButtonKind.Secondary, new Action(ExitApp));
+            if (on) y = DrawButton(g, y, Lang.T("mw.bOff"), ButtonKind.Primary, new Action(ToggleOff));
+            else y = DrawButton(g, y, Lang.T("mw.bOn"), ButtonKind.Primary, new Action(ToggleOn));
+            y = DrawButton(g, y, Lang.T("mw.bNew"), ButtonKind.Secondary, new Action(CreateBox));
+            y = DrawButton(g, y, Lang.T("mw.bSettings"), ButtonKind.Secondary, new Action(ShowSettings));
+            y = DrawButton(g, y, Lang.T("mw.bCloseAll"), ButtonKind.Secondary, new Action(CloseAllBoxes));
+            y = DrawButton(g, y, Lang.T("mw.bUninstall"), ButtonKind.Danger, new Action(Uninstall));
+            DrawButton(g, y, Lang.T("mw.bExit"), ButtonKind.Secondary, new Action(ExitApp));
         }
 
         private enum ButtonKind { Primary, Secondary, Danger }
@@ -1483,9 +2370,9 @@ namespace DropFile
             if (app != null) app.CreateBox();
         }
 
-        private void ShowColor()
+        private void ShowSettings()
         {
-            if (app != null) app.ShowColorMenu(this, new Point(24, 24));
+            if (app != null) app.ShowSettingsForm();
         }
 
         private void CloseAllBoxes()
@@ -1754,13 +2641,14 @@ namespace DropFile
         private readonly List<string> items = new List<string>();
         private readonly Dictionary<string, ShelfAnimItem> itemAnims = new Dictionary<string, ShelfAnimItem>();
         private float shelfBounce = 0f;
+        private float dragOutAnim = 0f;
 
         private Point pressPoint;
         private readonly string stagingDir;
         private bool closed;
 
-        private const int FixedWidth = 200;
-        private const int FixedHeight = 250;
+        private const int BaseWidth = 200;
+        private const int BaseHeight = 250;
 
         private readonly Dictionary<string, Bitmap> thumbCache = new Dictionary<string, Bitmap>();
         private readonly Dictionary<string, Bitmap> iconCache = new Dictionary<string, Bitmap>();
@@ -1885,8 +2773,8 @@ namespace DropFile
 
             Text = "DropFile";
             Icon = IconFactory.Create();
-            ClientSize = new Size(FixedWidth, FixedHeight);
-            MinimumSize = new Size(200, 240);
+            ClientSize = new Size(Scaled(BaseWidth), Scaled(BaseHeight));
+            MinimumSize = new Size(Scaled(200), Scaled(240));
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.Manual;
             TopMost = app.AppSettings.AlwaysOnTop;
@@ -1899,10 +2787,7 @@ namespace DropFile
             ContextMenuStrip = app.MakeMenu(this);
             SetRegion();
 
-            try {
-                string previewPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "logo-preview.png");
-                if (File.Exists(previewPath)) dragPreview = new Bitmap(previewPath);
-            } catch { }
+            // dragPreview nggak dipake biar custom drag image bersih (anti flicker/logo kedip)
 
             statusTimer = new System.Windows.Forms.Timer { Interval = 3000 };
             statusTimer.Tick += delegate
@@ -1921,6 +2806,29 @@ namespace DropFile
             this.GiveFeedback += DropWindow_GiveFeedback;
         }
 
+        // Skala ukuran kotak sesuai persentase di Settings (60–180%).
+        private int Scaled(int v)
+        {
+            int scale = 100;
+            try
+            {
+                if (app != null && app.AppSettings != null) scale = app.AppSettings.BoxScale;
+            }
+            catch { }
+            if (scale < 60) scale = 60;
+            if (scale > 180) scale = 180;
+            return (int)Math.Round(v * scale / 100.0);
+        }
+
+        public void ApplySize()
+        {
+            ClientSize = new Size(Scaled(BaseWidth), Scaled(BaseHeight));
+            MinimumSize = new Size(Scaled(200), Scaled(240));
+            UpdateTooltip();
+            SetRegion();
+            Invalidate();
+        }
+
         private void OnAnimTick(object sender, EventArgs e)
         {
             bool needsRedraw = false;
@@ -1932,13 +2840,27 @@ namespace DropFile
             }
             else shelfBounce = 0f;
 
+            if (draggingOut)
+            {
+                dragOutAnim += 0.18f;
+                if (dragOutAnim > 1f) dragOutAnim = 1f;
+                needsRedraw = true;
+            }
+            else if (dragOutAnim > 0.01f)
+            {
+                dragOutAnim -= 0.14f;
+                if (dragOutAnim < 0f) dragOutAnim = 0f;
+                needsRedraw = true;
+            }
+            else dragOutAnim = 0f;
+
             foreach (var kv in itemAnims)
             {
                 if (kv.Value.Step()) needsRedraw = true;
             }
 
             if (needsRedraw) Invalidate();
-            else if (shelfBounce == 0f)
+            else if (shelfBounce == 0f && dragOutAnim == 0f)
             {
                 bool allDone = true;
                 foreach (var kv in itemAnims)
@@ -1957,13 +2879,7 @@ namespace DropFile
 
         private void UpdateTooltip()
         {
-            toolTip.SetToolTip(this,
-                "Rak Dokumen DropFile:\n" +
-                "• Seret file, gambar, atau halaman web ke rak ini (dari aplikasi apa pun).\n" +
-                "• File yang masuk tersimpan di keranjang; bisa terus menambahkan file baru.\n" +
-                "• Klik tombol ▾ di kanan atas untuk memilih (centang) file mana yang boleh ditarik keluar.\n" +
-                "• Tarik file dari rak ke folder/aplikasi lain untuk memindahkan yang tercentang.\n" +
-                "• Klik ✕ untuk menutup dan membersihkan rak.");
+            toolTip.SetToolTip(this, Lang.T("box.tip"));
         }
 
         public void ShowStatus(string text)
@@ -2100,7 +3016,7 @@ namespace DropFile
                 }
 
                 Rectangle titleRect = new Rectangle(28, 9, Width - 120, 20);
-                g.DrawString(hovering ? "LEPASKAN DI RAK!" : "RAK DOKUMEN", titleFont, hovering ? accentBrush : white, titleRect);
+                g.DrawString(hovering ? Lang.T("box.dropTitle") : Lang.T("box.title"), titleFont, hovering ? accentBrush : white, titleRect);
 
                 if (items.Count > 0)
                 {
@@ -2163,19 +3079,25 @@ namespace DropFile
                     DrawInboxIcon(g, zone, accentBrush);
                     using (var emptyFont = new Font("Segoe UI", 8f))
                     {
-                        g.DrawString(hovering ? "Lepaskan di sini!" : "Keranjang kosong\nSeret file / gambar / web ke sini", emptyFont, hovering ? accentBrush : gray, new Rectangle(12, zone.Top + zone.Height - 44, Width - 24, 34), sfCenter);
+                        g.DrawString(hovering ? Lang.T("box.dropHere") : Lang.T("box.empty"), emptyFont, hovering ? accentBrush : gray, new Rectangle(12, zone.Top + zone.Height - 44, Width - 24, 34), sfCenter);
                     }
                 }
-                if (draggingOut && items.Count > 0)
+                if ((dragOutAnim > 0.01f || draggingOut) && items.Count > 0)
                 {
-                    using (var overlay = new SolidBrush(Color.FromArgb(30, Accent)))
+                    using (var glowBrush = new SolidBrush(Color.FromArgb((int)(60 * dragOutAnim), Accent)))
                     {
-                        g.FillRounded(ShelfRect(), 8, overlay);
+                        Rectangle shelf = ShelfRect();
+                        g.FillRounded(shelf, 10, glowBrush);
+                    }
+                    using (var ringPen = new Pen(Color.FromArgb((int)(160 * dragOutAnim), AccentLight), 2f))
+                    {
+                        ringPen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
+                        g.DrawRounded(ShelfRect(), 10, ringPen);
                     }
                 }
 
                 Rectangle hintRect = new Rectangle(8, Height - 26, Width - 16, 20);
-                string textToShow = !string.IsNullOrEmpty(statusText) ? statusText : "Seret keluar untuk memindahkan";
+                string textToShow = !string.IsNullOrEmpty(statusText) ? statusText : Lang.T("box.hint");
                 g.DrawString(Shorten(textToShow, hintRect.Width, subFont, g), subFont, !string.IsNullOrEmpty(statusText) ? accentBrush : gray, hintRect, sfCenter);
             }
         }
@@ -2215,12 +3137,15 @@ namespace DropFile
 
                 GraphicsState gs = g.Save();
 
-                if (Math.Abs(drawTilt) > 0.05f || anim.Scale > 1.01f)
+                float lift = dragOutAnim * 14f;
+                float dragScale = 1f + dragOutAnim * 0.28f;
+                float dragTiltMul = 1f - dragOutAnim * 0.9f;
+                if (Math.Abs(drawTilt * dragTiltMul) > 0.05f || anim.Scale * dragScale > 1.01f || dragOutAnim > 0.01f)
                 {
-                    g.TranslateTransform(centerX, cardY + cardH);
-                    g.RotateTransform(drawTilt);
-                    g.ScaleTransform(anim.Scale, anim.Scale);
-                    g.TranslateTransform(-centerX, -(cardY + cardH));
+                    g.TranslateTransform(centerX, (cardY + cardH) - lift);
+                    g.RotateTransform(drawTilt * dragTiltMul);
+                    g.ScaleTransform(anim.Scale * dragScale, anim.Scale * dragScale);
+                    g.TranslateTransform(-centerX, -(cardY + cardH - lift));
                 }
 
                 DrawDocumentCard(g, cardRect, path, alpha, i == 0, anim.PinGlow);
@@ -2552,7 +3477,7 @@ namespace DropFile
             menu.ShowImageMargin = true;
             menu.Font = new Font("Segoe UI", 9f);
 
-            var header = new ToolStripMenuItem("Keranjang — " + items.Count + " file — centang yang boleh ditarik keluar") { Enabled = false };
+            var header = new ToolStripMenuItem(Lang.T("bk.header", items.Count)) { Enabled = false };
             menu.Items.Add(header);
             menu.Items.Add(new ToolStripSeparator());
 
@@ -2567,7 +3492,7 @@ namespace DropFile
                 {
                     CheckOnClick = true,
                     Tag = path,
-                    ToolTipText = "Centang agar file ini ikut ditarik keluar"
+                    ToolTipText = Lang.T("bk.itemTip")
                 };
 
                 bool on;
@@ -2581,21 +3506,21 @@ namespace DropFile
 
             menu.Items.Add(new ToolStripSeparator());
 
-            var selAll = new ToolStripMenuItem("Pilih Semua");
+            var selAll = new ToolStripMenuItem(Lang.T("bk.all"));
             selAll.Click += delegate { foreach (var kv in checks) kv.Key.Checked = true; };
             menu.Items.Add(selAll);
 
-            var selNone = new ToolStripMenuItem("Kosongkan Pilihan");
+            var selNone = new ToolStripMenuItem(Lang.T("bk.none"));
             selNone.Click += delegate { foreach (var kv in checks) kv.Key.Checked = false; };
             menu.Items.Add(selNone);
 
             menu.Items.Add(new ToolStripSeparator());
 
-            var dragAll = new ToolStripMenuItem("Seret Semua Keluar");
+            var dragAll = new ToolStripMenuItem(Lang.T("bk.dragAll"));
             dragAll.Click += delegate { StartDragOut(new List<string>(items)); };
             menu.Items.Add(dragAll);
 
-            var dragSel = new ToolStripMenuItem("Seret Keluar (yang Terpilih)");
+            var dragSel = new ToolStripMenuItem(Lang.T("bk.dragSel"));
             dragSel.Click += delegate
             {
                 var sel = new List<string>();
@@ -2606,7 +3531,7 @@ namespace DropFile
 
             menu.Items.Add(new ToolStripSeparator());
 
-            var clearItem = new ToolStripMenuItem("Bersihkan Semua");
+            var clearItem = new ToolStripMenuItem(Lang.T("bk.clear"));
             clearItem.ForeColor = MaterialColors.Error;
             clearItem.Click += delegate
             {
@@ -2623,78 +3548,12 @@ namespace DropFile
 
         private void ShowSettingsMenu()
         {
-            Rectangle sr = SettingsRect();
-            app.ShowColorMenu(this, new Point(sr.Left, sr.Bottom + 2));
-        }
-
-        internal static Bitmap MakeSwatch(Color c)
-        {
-            var bmp = new Bitmap(14, 14);
-            using (Graphics g = Graphics.FromImage(bmp))
-            {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                using (var b = new SolidBrush(c))
-                {
-                    g.FillRounded(new Rectangle(1, 1, 12, 12), 4, b);
-                }
-                using (var p = new Pen(Color.FromArgb(90, 255, 255, 255), 1f))
-                {
-                    g.DrawRounded(new Rectangle(1, 1, 12, 12), 4, p);
-                }
-            }
-            return bmp;
+            if (app != null) app.ShowSettingsForm();
         }
 
         private void DropWindow_GiveFeedback(object sender, GiveFeedbackEventArgs e)
         {
-            if (dragPreview == null)
-            {
-                e.UseDefaultCursors = true;
-                return;
-            }
-            e.UseDefaultCursors = false;
-
-            Point pos = Cursor.Position;
-            int w = 64;
-            int h = (int)(dragPreview.Height * ((float)w / dragPreview.Width));
-            if (h > 64) { h = 64; w = (int)(dragPreview.Width * ((float)h / dragPreview.Height)); }
-            if (w < 16) w = 16;
-            if (h < 16) h = 16;
-            Rectangle r = new Rectangle(pos.X - w / 2, pos.Y - h / 2, w, h);
-
-            IntPtr hdc = Native.GetDC(IntPtr.Zero);
-            if (hdc == IntPtr.Zero) return;
-            try
-            {
-                using (Graphics g = Graphics.FromHdc(hdc))
-                {
-                    if (dragGhost != null)
-                    {
-                        g.DrawImageUnscaled(dragGhost, dragGhostRect.X, dragGhostRect.Y);
-                    }
-                    if (dragGhost == null || dragGhost.Width != r.Width || dragGhost.Height != r.Height)
-                    {
-                        if (dragGhost != null) dragGhost.Dispose();
-                        dragGhost = new Bitmap(r.Width, r.Height);
-                    }
-                    using (var bg = Graphics.FromImage(dragGhost))
-                    {
-                        bg.CopyFromScreen(r.X, r.Y, 0, 0, r.Size);
-                    }
-                    using (var ia = new System.Drawing.Imaging.ImageAttributes())
-                    {
-                        var cm = new System.Drawing.Imaging.ColorMatrix();
-                        cm.Matrix33 = 0.85f;
-                        ia.SetColorMatrix(cm);
-                        g.DrawImage(dragPreview, r, 0, 0, dragPreview.Width, dragPreview.Height, GraphicsUnit.Pixel, ia);
-                    }
-                    dragGhostRect = r;
-                }
-            }
-            finally
-            {
-                Native.ReleaseDC(IntPtr.Zero, hdc);
-            }
+            e.UseDefaultCursors = true;
         }
 
         private void ClearDragGhost()
@@ -2750,21 +3609,7 @@ namespace DropFile
             data.SetData(DataFormats.UnicodeText, topName);
             data.SetData(DataFormats.Html, string.Format("<a href=\"file:///{0}\">{1}</a>", topPath.Replace('\\', '/'), topName));
 
-
-            // Attempt to use preview image if available
-            Image previewImg = null;
-            try
-            {
-                string appDir = AppDomain.CurrentDomain.BaseDirectory;
-                string previewFile = Path.Combine(appDir, "logo-preview.png");
-                if (File.Exists(previewFile))
-                {
-                    previewImg = Image.FromFile(previewFile);
-                    data.SetData(DataFormats.Bitmap, true, previewImg);
-                }
-            }
-            catch { }
-
+            // Jangan set Bitmap biar nggak muncul logo DropFile saat drag
             selfDrag = true;
             try
             {
@@ -2774,7 +3619,7 @@ namespace DropFile
             {
                 selfDrag = false;
                 ClearDragGhost();
-                if (previewImg != null) previewImg.Dispose();
+                // Hapus dari rak setelah drag keluar sukses
                 foreach (string p in valid)
                 {
                     items.Remove(p);
@@ -2943,9 +3788,10 @@ namespace DropFile
                 }
                 else if (ShelfRect().Contains(e.Location) && items.Count > 0)
                 {
-                    selfDrag = true;
-                    draggingOut = true;
-                    pressPoint = e.Location;
+            selfDrag = true;
+            draggingOut = true;
+            pressPoint = e.Location;
+            if (!animTimer.Enabled) animTimer.Start();
                 }
                 else
                 {
@@ -3012,11 +3858,11 @@ namespace DropFile
 
             if (copied > 0)
             {
-                statusText = "✓ " + copied + " item masuk ke rak";
+                statusText = Lang.T("box.added", copied);
             }
             else
             {
-                statusText = "Gagal mengambil data";
+                statusText = Lang.T("box.failed");
             }
 
             statusTimer.Stop();
@@ -3568,6 +4414,374 @@ namespace DropFile
             base.OnResize(e);
             SetRegion();
             Invalidate();
+        }
+    }
+
+    // Jendela pengaturan: jumlah kotak, ukuran kotak, dan bahasa tampilan.
+    internal class SettingsForm : Form
+    {
+        private readonly AppContext app;
+        private readonly Settings s;
+
+        private NumericUpDown numBoxes;
+        private TrackBar trackSize;
+        private ComboBox comboLang;
+        private Label lblTitle;
+        private Label lblLang;
+        private Label lblBoxes;
+        private Label lblSize;
+        private Label lblSizeValue;
+        private Label lblColor;
+        private Label lblHint;
+        private Button btnSave;
+        private Button btnCancel;
+        private Button btnClose;
+        private Button btnSystem;
+        private Button btnReset;
+        private Button[] swatches;
+        private ToolTip tip;
+
+        private string pendingAccentMode;
+        private string pendingAccentHex;
+
+        private Font titleFont;
+        private Font labelFont;
+        private Font valueFont;
+        private Font hintFont;
+        private Font closeFont;
+        private bool fontsDisposed;
+
+        private const int WM_NCLBUTTONDOWN = 0xA1;
+        private const int HTCAPTION = 0x2;
+
+        public SettingsForm(AppContext app)
+        {
+            this.app = app;
+            s = app.AppSettings;
+
+            Text = Lang.T("s.title");
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.CenterScreen;
+            ClientSize = new Size(400, 430);
+            BackColor = MaterialColors.SurfaceContainerLow;
+            DoubleBuffered = true;
+            ShowInTaskbar = false;
+            KeyPreview = true;
+            KeyDown += OnFormKeyDown;
+
+            pendingAccentMode = s.AccentMode;
+            pendingAccentHex = s.AccentHex;
+            tip = new ToolTip();
+
+            titleFont = new Font("Segoe UI", 14f, FontStyle.Bold);
+            labelFont = new Font("Segoe UI", 9f);
+            valueFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+            hintFont = new Font("Segoe UI", 8.5f);
+            closeFont = new Font("Segoe UI", 10f, FontStyle.Bold);
+
+            int x = 26;
+            int w = 348;
+
+            lblTitle = MakeLabel(Lang.T("s.title"), titleFont, MaterialColors.OnSurface, x, 14, w - 60, 30);
+
+            lblLang = MakeLabel(Lang.T("s.lang"), labelFont, MaterialColors.OnSurfaceVariant, x, 62, w, 20);
+            comboLang = new ComboBox();
+            comboLang.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboLang.FlatStyle = FlatStyle.Flat;
+            comboLang.Font = labelFont;
+            comboLang.BackColor = MaterialColors.SurfaceContainerHigh;
+            comboLang.ForeColor = MaterialColors.OnSurface;
+            comboLang.Location = new Point(x, 84);
+            comboLang.Size = new Size(w, 26);
+            comboLang.Items.AddRange(Lang.Names);
+            int langIdx = Lang.IndexOfCode(s.Language);
+            comboLang.SelectedIndex = langIdx;
+            comboLang.SelectedIndexChanged += delegate { UpdateLabels(Lang.Codes[comboLang.SelectedIndex]); };
+
+            lblBoxes = MakeLabel(Lang.T("s.boxes"), labelFont, MaterialColors.OnSurfaceVariant, x, 122, w - 110, 20);
+            numBoxes = new NumericUpDown();
+            numBoxes.Font = valueFont;
+            numBoxes.BackColor = MaterialColors.SurfaceContainerHigh;
+            numBoxes.ForeColor = MaterialColors.OnSurface;
+            numBoxes.BorderStyle = BorderStyle.FixedSingle;
+            numBoxes.Minimum = 1;
+            numBoxes.Maximum = 16;
+            numBoxes.Increment = 1;
+            numBoxes.Value = Math.Max(1, Math.Min(16, s.MaxBoxes));
+            numBoxes.Location = new Point(x + w - 70, 120);
+            numBoxes.Size = new Size(70, 24);
+
+            lblSize = MakeLabel(Lang.T("s.size"), labelFont, MaterialColors.OnSurfaceVariant, x, 162, w - 80, 20);
+            lblSizeValue = MakeLabel(Lang.T("s.percent", s.BoxScale), valueFont, MaterialColors.Primary, x + w - 70, 162, 70, 20);
+            lblSizeValue.TextAlign = ContentAlignment.MiddleRight;
+            trackSize = new TrackBar();
+            trackSize.Minimum = 60;
+            trackSize.Maximum = 180;
+            trackSize.LargeChange = 20;
+            trackSize.SmallChange = 5;
+            trackSize.TickFrequency = 20;
+            trackSize.Value = Math.Max(60, Math.Min(180, s.BoxScale));
+            trackSize.BackColor = BackColor;
+            trackSize.ForeColor = MaterialColors.Primary;
+            trackSize.Location = new Point(x - 6, 186);
+            trackSize.Size = new Size(w + 12, 34);
+            trackSize.ValueChanged += delegate { lblSizeValue.Text = Lang.T("s.percent", trackSize.Value); };
+
+            lblColor = MakeLabel(Lang.T("c.title"), labelFont, MaterialColors.OnSurfaceVariant, x, 224, w, 20);
+
+            swatches = new Button[AppContext.AccentPresets.Length / 2];
+            for (int i = 0; i < swatches.Length; i++)
+            {
+                swatches[i] = MakeSwatchButton(AppContext.AccentPresets[i * 2 + 1], x + i * 39, 248);
+            }
+
+            btnSystem = MakeButton(Lang.T("c.sys"), MaterialColors.SurfaceContainerHigh, MaterialColors.OnSurface, x, 290, 168, 34);
+            btnSystem.Click += delegate { pendingAccentMode = "system"; UpdateColorSelection(); };
+
+            btnReset = MakeButton(Lang.T("c.reset"), MaterialColors.SurfaceContainerHigh, MaterialColors.OnSurface, x + w - 168, 290, 168, 34);
+            btnReset.Click += delegate
+            {
+                pendingAccentMode = "system";
+                pendingAccentHex = "#34B4FF";
+                UpdateColorSelection();
+            };
+
+            lblHint = MakeLabel(Lang.T("s.hint"), hintFont, MaterialColors.Outline, x, 334, w, 30);
+
+            btnSave = MakeButton(Lang.T("s.save"), MaterialColors.Primary, MaterialColors.OnPrimary, x + w - 104, 378, 104, 36);
+            btnSave.Click += delegate { SaveAndClose(); };
+            btnCancel = MakeButton(Lang.T("s.cancel"), MaterialColors.SurfaceContainerHigh, MaterialColors.OnSurface, x + w - 220, 378, 104, 36);
+            btnCancel.Click += delegate { Close(); };
+
+            btnClose = new Button();
+            btnClose.Font = closeFont;
+            btnClose.Text = "✕";
+            btnClose.FlatStyle = FlatStyle.Flat;
+            btnClose.FlatAppearance.BorderSize = 0;
+            btnClose.BackColor = Color.FromArgb(30, MaterialColors.OnSurface);
+            btnClose.ForeColor = MaterialColors.OnSurface;
+            btnClose.Location = new Point(ClientSize.Width - 40, 12);
+            btnClose.Size = new Size(26, 26);
+            btnClose.Cursor = Cursors.Hand;
+            btnClose.Click += delegate { Close(); };
+
+            Controls.Add(lblTitle);
+            Controls.Add(lblLang);
+            Controls.Add(comboLang);
+            Controls.Add(lblBoxes);
+            Controls.Add(numBoxes);
+            Controls.Add(lblSize);
+            Controls.Add(lblSizeValue);
+            Controls.Add(trackSize);
+            Controls.Add(lblColor);
+            for (int i = 0; i < swatches.Length; i++) Controls.Add(swatches[i]);
+            Controls.Add(btnSystem);
+            Controls.Add(btnReset);
+            Controls.Add(lblHint);
+            Controls.Add(btnSave);
+            Controls.Add(btnCancel);
+            Controls.Add(btnClose);
+
+            SetRoundedRegion();
+            UpdateColorSelection();
+        }
+
+        private Label MakeLabel(string text, Font f, Color c, int x, int y, int w, int h)
+        {
+            var l = new Label();
+            l.Text = text;
+            l.Font = f;
+            l.ForeColor = c;
+            l.BackColor = Color.Transparent;
+            l.AutoSize = false;
+            l.Location = new Point(x, y);
+            l.Size = new Size(w, h);
+            return l;
+        }
+
+        private static Button MakeButton(string text, Color bg, Color fg, int x, int y, int w, int h)
+        {
+            var b = new Button();
+            b.Text = text;
+            b.FlatStyle = FlatStyle.Flat;
+            b.FlatAppearance.BorderSize = 0;
+            b.BackColor = bg;
+            b.ForeColor = fg;
+            b.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            b.Cursor = Cursors.Hand;
+            b.Location = new Point(x, y);
+            b.Size = new Size(w, h);
+            b.UseVisualStyleBackColor = false;
+            return b;
+        }
+
+        private Button MakeSwatchButton(string hex, int x, int y)
+        {
+            var b = new Button();
+            b.FlatStyle = FlatStyle.Flat;
+            b.FlatAppearance.BorderSize = 0;
+            b.FlatAppearance.BorderColor = Color.White;
+            b.BackColor = ParseHexColor(hex);
+            b.Cursor = Cursors.Hand;
+            b.Location = new Point(x, y);
+            b.Size = new Size(36, 30);
+            b.UseVisualStyleBackColor = false;
+            string capturedHex = hex;
+            b.Click += delegate
+            {
+                pendingAccentMode = "custom";
+                pendingAccentHex = capturedHex;
+                UpdateColorSelection();
+            };
+            return b;
+        }
+
+        private static Color ParseHexColor(string hex)
+        {
+            string norm = (hex ?? "").TrimStart('#').ToUpperInvariant();
+            if (norm.Length != 6) return MaterialColors.Primary;
+            return Color.FromArgb(
+                Convert.ToInt32(norm.Substring(0, 2), 16),
+                Convert.ToInt32(norm.Substring(2, 2), 16),
+                Convert.ToInt32(norm.Substring(4, 2), 16));
+        }
+
+        private static bool HexEqual(string a, string b)
+        {
+            if (a == null || b == null) return false;
+            return string.Equals(a.TrimStart('#'), b.TrimStart('#'), StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Tandai pilihan warna yang sedang aktif di dialog.
+        private void UpdateColorSelection()
+        {
+            bool custom = pendingAccentMode == "custom";
+            for (int i = 0; i < swatches.Length; i++)
+            {
+                bool active = custom && HexEqual(pendingAccentHex, AppContext.AccentPresets[i * 2 + 1]);
+                swatches[i].FlatAppearance.BorderSize = active ? 3 : 0;
+                swatches[i].FlatAppearance.BorderColor = Color.White;
+                swatches[i].Invalidate();
+            }
+            btnSystem.FlatAppearance.BorderSize = (pendingAccentMode == "system") ? 2 : 0;
+            btnSystem.FlatAppearance.BorderColor = Color.White;
+            btnSystem.Invalidate();
+        }
+
+        // Pratinjau teks langsung memakai bahasa yang dipilih di daftar.
+        private void UpdateLabels(string code)
+        {
+            if (trackSize == null || lblTitle == null) return;
+            string title = Lang.Tc(code, "s.title");
+            Text = title;
+            lblTitle.Text = title;
+            lblLang.Text = Lang.Tc(code, "s.lang");
+            lblBoxes.Text = Lang.Tc(code, "s.boxes");
+            lblSize.Text = Lang.Tc(code, "s.size");
+            lblColor.Text = Lang.Tc(code, "c.title");
+            lblHint.Text = Lang.Tc(code, "s.hint");
+            btnSave.Text = Lang.Tc(code, "s.save");
+            btnCancel.Text = Lang.Tc(code, "s.cancel");
+            btnSystem.Text = Lang.Tc(code, "c.sys");
+            btnReset.Text = Lang.Tc(code, "c.reset");
+            tip.SetToolTip(btnSystem, Lang.Tc(code, "c.sysTip"));
+            for (int i = 0; i < swatches.Length; i++)
+            {
+                string key = "c." + AppContext.AccentPresets[i * 2];
+                string label = Lang.Tc(code, key);
+                tip.SetToolTip(swatches[i], Lang.Tc(code, "c.use", label.ToLowerInvariant()));
+            }
+            lblSizeValue.Text = Lang.Tc(code, "s.percent", trackSize.Value);
+        }
+
+        private void SaveAndClose()
+        {
+            int idx = comboLang.SelectedIndex;
+            string code = (idx >= 0 && idx < Lang.Codes.Length) ? Lang.Codes[idx] : "en";
+            s.MaxBoxes = (int)numBoxes.Value;
+            s.BoxScale = trackSize.Value;
+            s.Language = code;
+            s.AccentMode = pendingAccentMode;
+            s.AccentHex = pendingAccentHex;
+            s.Save();
+            app.ApplyTheme();
+            app.ApplySettings();
+            Close();
+        }
+
+        private void OnFormKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape) Close();
+            else if (e.KeyCode == Keys.Enter) SaveAndClose();
+        }
+
+        private void SetRoundedRegion()
+        {
+            int r = 16;
+            using (var gp = new GraphicsPath())
+            {
+                Rectangle rc = new Rectangle(0, 0, Width - 1, Height - 1);
+                gp.AddArc(rc.X, rc.Y, r * 2, r * 2, 180, 90);
+                gp.AddArc(rc.Right - r * 2, rc.Y, r * 2, r * 2, 270, 90);
+                gp.AddArc(rc.Right - r * 2, rc.Bottom - r * 2, r * 2, r * 2, 0, 90);
+                gp.AddArc(rc.X, rc.Bottom - r * 2, r * 2, r * 2, 90, 90);
+                gp.CloseFigure();
+                Region = new Region(gp);
+            }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            Graphics g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+            Rectangle rect = new Rectangle(1, 1, Width - 3, Height - 3);
+            using (var brush = new LinearGradientBrush(rect, MaterialColors.SurfaceContainerLow, MaterialColors.SurfaceDim, 90f))
+            {
+                g.FillRounded(rect, 16, brush);
+            }
+            using (Pen border = new Pen(Color.FromArgb(120, MaterialColors.OutlineVariant), 1.5f))
+            {
+                g.DrawRounded(rect, 16, border);
+            }
+            using (var strip = new LinearGradientBrush(new Rectangle(0, 0, Width, 3), MaterialColors.Primary, MaterialColors.AccentLight, 0f))
+            {
+                g.FillRounded(new Rectangle(14, 2, Width - 28, 3), 2, strip);
+            }
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (e.Button != MouseButtons.Left) return;
+            if (e.Y < 56 && e.X < ClientSize.Width - 50)
+            {
+                Native.ReleaseCapture();
+                Native.SendMessage(Handle, WM_NCLBUTTONDOWN, new IntPtr(HTCAPTION), IntPtr.Zero);
+            }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            base.OnFormClosing(e);
+            if (fontsDisposed) return;
+            fontsDisposed = true;
+            try
+            {
+                if (titleFont != null) titleFont.Dispose();
+                if (labelFont != null) labelFont.Dispose();
+                if (valueFont != null) valueFont.Dispose();
+                if (hintFont != null) hintFont.Dispose();
+                if (closeFont != null) closeFont.Dispose();
+                if (btnSave != null && btnSave.Font != null) btnSave.Font.Dispose();
+                if (btnCancel != null && btnCancel.Font != null) btnCancel.Font.Dispose();
+                if (btnSystem != null && btnSystem.Font != null) btnSystem.Font.Dispose();
+                if (btnReset != null && btnReset.Font != null) btnReset.Font.Dispose();
+                if (tip != null) tip.Dispose();
+            }
+            catch { }
         }
     }
 

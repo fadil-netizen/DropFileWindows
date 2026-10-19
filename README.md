@@ -24,7 +24,7 @@ Hasil: `DropFile.exe` (aplikasi + installer dalam satu file).
 
 ## Cara Pakai
 
-1. Jalankan `DropFile.exe` → animasi instalasi, lalu terpasang ke `%LOCALAPPDATA%\DropFile`.
+1. Jalankan `DropFile.exe` → animasi instalasi, lalu terpasang ke `%LOCALAPPDATA%\Programs\DropFile`.
 2. Goyangkan kursor cepat untuk membuat kotak drop, atau klik ikon tray.
 3. Seret file ke kotak. Klik ▾ untuk memilih file yang boleh ditarik keluar.
 4. Tarik keluar untuk memindahkan, atau klik ✕ untuk membersihkan.

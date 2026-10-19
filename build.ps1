@@ -21,5 +21,5 @@ Write-Host "  DropFile.exe  (aplikasi + installer dalam satu file)"
 Write-Host ""
 Write-Host "Cara pakai:" -ForegroundColor Yellow
 Write-Host "  - Jalankan DropFile.exe (dari mana saja) -> menampilkan animasi instalasi, lalu terpasang."
-Write-Host "  - Dari folder instalasi (%LOCALAPPDATA%\DropFile) -> berjalan sebagai aplikasi drop."
+Write-Host "  - Dari folder instalasi (%LOCALAPPDATA%\Programs\DropFile) -> berjalan sebagai aplikasi drop."
 Write-Host "  - DropFile.exe /uninstall -> membuka animasi penghapusan."
