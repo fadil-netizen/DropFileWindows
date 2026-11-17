@@ -614,6 +614,7 @@ s.size=Drop box size
 s.hint=Changes are applied after you click Save.
 s.save=Save
 s.cancel=Cancel
+s.resetSize=Reset to 100%
 s.percent={0}%");
             t["id"] = Parse(@"mw.title=DropFile — Panel Utama
 mw.sub=Panel utama — seret & tempel file
@@ -679,6 +680,7 @@ s.size=Ukuran kotak drop
 s.hint=Perubahan diterapkan setelah klik Simpan.
 s.save=Simpan
 s.cancel=Batal
+s.resetSize=Reset ukuran kotak ke 100%
 s.percent={0}%");
             t["zh"] = Parse(@"mw.title=DropFile — 主面板
 mw.sub=主面板 — 拖放文件
@@ -744,6 +746,7 @@ s.size=投放框大小
 s.hint=点击保存后更改生效。
 s.save=保存
 s.cancel=取消
+s.resetSize=重置投放框大小为100%
 s.percent={0}%");
             t["ja"] = Parse(@"mw.title=DropFile — メインパネル
 mw.sub=メインパネル — ファイルのドラッグ＆ドロップ
@@ -809,6 +812,7 @@ s.size=ドロップボックスのサイズ
 s.hint=変更は「保存」を押した後に適用されます。
 s.save=保存
 s.cancel=キャンセル
+s.resetSize=ドロップボックスを100%にリセット
 s.percent={0}%");
             t["ar"] = Parse(@"mw.title=DropFile — اللوحة الرئيسية
 mw.sub=اللوحة الرئيسية — اسحب وأفلت الملفات
@@ -874,6 +878,7 @@ s.size=حجم صندوق الإفلات
 s.hint=تُطبَّق التغييرات بعد الضغط على حفظ.
 s.save=حفظ
 s.cancel=إلغاء
+s.resetSize=إعادة تعيين حجم صندوق الإفلات إلى 100%
 s.percent={0}%");
             t["he"] = Parse(@"mw.title=DropFile — לוח ראשי
 mw.sub=לוח ראשי — גרירה ושחרור קבצים
@@ -939,6 +944,7 @@ s.size=גודל תיבת ה-drop
 s.hint=השינויים יחולו לאחר לחיצה על שמירה.
 s.save=שמירה
 s.cancel=ביטול
+s.resetSize=איפוס גודל תיבת ה-drop ל-100%
 s.percent={0}%");
             t["es"] = Parse(@"mw.title=DropFile — Panel principal
 mw.sub=Panel principal — arrastrar y soltar archivos
@@ -1004,6 +1010,7 @@ s.size=Tamaño de la casilla de drop
 s.hint=Los cambios se aplican después de guardar.
 s.save=Guardar
 s.cancel=Cancelar
+s.resetSize=Restablecer tamaño de la casilla al 100%
 s.percent={0}%");
             t["fr"] = Parse(@"mw.title=DropFile — Panneau principal
 mw.sub=Panneau principal — glisser-déposer des fichiers
@@ -1069,6 +1076,7 @@ s.size=Taille de la zone de dépôt
 s.hint=Les modifications s'appliquent après avoir cliqué sur Enregistrer.
 s.save=Enregistrer
 s.cancel=Annuler
+s.resetSize=Rétablir la taille de la zone de dépôt au 100%
 s.percent={0}%");
             t["de"] = Parse(@"mw.title=DropFile — Hauptpanel
 mw.sub=Hauptpanel — Dateien per Drag & Drop
@@ -1134,6 +1142,7 @@ s.size=Größe der Drop-Box
 s.hint=Änderungen werden nach dem Speichern übernommen.
 s.save=Speichern
 s.cancel=Abbrechen
+s.resetSize=Drop-Box-Größe auf 100 % zurücksetzen
 s.percent={0}%");
             t["ru"] = Parse(@"mw.title=DropFile — Главная панель
 mw.sub=Главная панель — перетаскивание файлов
@@ -1199,6 +1208,7 @@ s.size=Размер коробки
 s.hint=Изменения применяются после нажатия «Сохранить».
 s.save=Сохранить
 s.cancel=Отмена
+s.resetSize=Сбросить размер коробки в 100%
 s.percent={0}%");
             t["pt"] = Parse(@"mw.title=DropFile — Painel principal
 mw.sub=Painel principal — arrastar e soltar arquivos
@@ -1264,6 +1274,7 @@ s.size=Tamanho da caixa de drop
 s.hint=As alterações são aplicadas depois de clicar em Salvar.
 s.save=Salvar
 s.cancel=Cancelar
+s.resetSize=Redefinir o tamanho da caixa para 100%
 s.percent={0}%");
             t["ko"] = Parse(@"mw.title=DropFile — 메인 패널
 mw.sub=메인 패널 — 파일 드래그 앤 드롭
@@ -1329,6 +1340,7 @@ s.size=드롭 상자 크기
 s.hint=변경 사항은 저장을 누른 후 적용됩니다.
 s.save=저장
 s.cancel=취소
+s.resetSize=드롭 박스 크기를 100%로 재설정
 s.percent={0}%");
             return t;
         }
@@ -1535,6 +1547,13 @@ s.percent={0}%");
             return null;
         }
 
+        // Reset ukuran drop box ke nilai default (100%).
+        public void ResetBoxScale()
+        {
+            BoxScale = 100;
+            Save();
+        }
+
         private static Color ParseHex(string hex)
         {
             try
@@ -1733,7 +1752,6 @@ s.percent={0}%");
         private Icon appIcon;
         private bool isClosing;
         private MainWindow mainWindow;
-        private SettingsForm settingsForm;
         private bool showMainRequested;
 
         public Settings AppSettings { get { return settings; } }
@@ -1760,6 +1778,7 @@ s.percent={0}%");
             {
                 mainWindow = new MainWindow(this);
             }
+            mainWindow.CloseSettings();
             mainWindow.RefreshUi();
             mainWindow.Show();
             mainWindow.BringToFront();
@@ -1789,20 +1808,11 @@ s.percent={0}%");
         {
             if (isClosing) return;
 
-            // Satu jendela Settings saja: kalau sudah terbuka, fokuskan yang ada.
-            if (settingsForm != null && !settingsForm.IsDisposed)
-            {
-                if (!settingsForm.Visible) settingsForm.Show();
-                if (settingsForm.WindowState == FormWindowState.Minimized)
-                    settingsForm.WindowState = FormWindowState.Normal;
-                settingsForm.Activate();
-                settingsForm.BringToFront();
-                return;
-            }
-
-            settingsForm = new SettingsForm(this);
-            settingsForm.FormClosed += delegate { settingsForm = null; };
-            settingsForm.Show();
+            // Pengaturan TIDAK pernah dibuat sebagai jendela baru — ia tampil
+            // di dalam Panel Utama yang sudah ada (mode pengaturan). Klik menu
+            // "Pengaturan..." hanya akan mengganti tampilan panel utama.
+            ShowMainWindow();
+            if (mainWindow != null && !mainWindow.IsDisposed) mainWindow.OpenSettings();
         }
 
         // Terapkan hasil Settings: bahasa, jumlah kotak, ukuran kotak.
@@ -2124,6 +2134,9 @@ s.percent={0}%");
         private readonly float[] buttonPress = new float[MaxButtons];
         private System.Windows.Forms.Timer btnAnim;
 
+        private SettingsPanel settingsPanel;
+        private bool settingsMode;
+
         // Font dik-cache agar tidak dialokasikan ulang per frame.
         private readonly Font titleFont;
         private readonly Font subFont;
@@ -2156,12 +2169,41 @@ s.percent={0}%");
 
             btnAnim = new System.Windows.Forms.Timer { Interval = 20 };
             btnAnim.Tick += OnButtonAnimTick;
+            KeyPreview = true;
         }
 
         public void RefreshUi()
         {
             Text = Lang.T("mw.title");
             Invalidate();
+        }
+
+        // Buka tampilan Pengaturan di DALIHAN Panel Utama (tanpa jendela baru).
+        public void OpenSettings()
+        {
+            if (settingsPanel == null)
+            {
+                settingsPanel = new SettingsPanel(app);
+                settingsPanel.SettingsClosed += delegate { CloseSettings(); };
+                Controls.Add(settingsPanel);
+            }
+            settingsPanel.LoadFromSettings();
+            settingsPanel.Visible = true;
+            settingsPanel.BringToFront();
+            if (!settingsMode)
+            {
+                settingsMode = true;
+                Invalidate();
+            }
+        }
+
+        // Tutup tampilan Pengaturan → kembali ke tampilan Panel Utama.
+        public void CloseSettings()
+        {
+            bool wasSettings = settingsMode;
+            settingsMode = false;
+            if (settingsPanel != null && settingsPanel.Visible) settingsPanel.Visible = false;
+            if (wasSettings) Invalidate();
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -2183,6 +2225,15 @@ s.percent={0}%");
             using (var stripBrush = new LinearGradientBrush(new Rectangle(0, 0, Width, 3), Accent, AccentLight, 0f))
             {
                 g.FillRounded(new Rectangle(14, 2, Width - 28, 3), 2, stripBrush);
+            }
+
+            // Saat tampilan Pengaturan aktif, panel pengaturan menutupi seluruh
+            // area — jadi hanya gambar latar yang digambar, header/tombol utama tidak.
+            if (settingsMode)
+            {
+                _buttonRects.Clear();
+                _buttonActions.Clear();
+                return;
             }
 
             // Header: ikon + judul
@@ -2482,7 +2533,12 @@ s.percent={0}%");
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
-            if (e.KeyCode == Keys.Escape) Hide();
+            if (e.KeyCode == Keys.Escape)
+            {
+                // Saat tampilan Pengaturan aktif → kembali ke tampilan utama.
+                if (settingsMode) CloseSettings();
+                else Hide();
+            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -2989,8 +3045,10 @@ s.percent={0}%");
                 g.FillRounded(new Rectangle(14, 2, Width - 28, 3), 2, stripBrush);
             }
 
-            using (var titleFont = new Font("Segoe UI", 9f, FontStyle.Bold))
-            using (var subFont = new Font("Segoe UI", 7.5f))
+            float fscale = (float)Height / (float)BaseHeight;
+
+            using (var titleFont = new Font("Segoe UI", Math.Max(5f, 9f * fscale), FontStyle.Bold))
+            using (var subFont = new Font("Segoe UI", Math.Max(4f, 7.5f * fscale)))
             using (var white = new SolidBrush(MaterialColors.OnSurface))
             using (var gray = new SolidBrush(Color.FromArgb(200, MaterialColors.OnSurfaceVariant)))
             using (var accentBrush = new SolidBrush(Accent))
@@ -2999,7 +3057,7 @@ s.percent={0}%");
                 Rectangle sRect = SettingsRect();
                 using (var glow = new SolidBrush(settingsHover ? Color.FromArgb(150, Accent) : Color.FromArgb(70, Accent)))
                 {
-                    int gd = settingsHover ? 22 : 15;
+                    int gd = (int)(settingsHover ? 22f * fscale : 15f * fscale);
                     g.FillEllipse(glow, sRect.Left + sRect.Width / 2 - gd / 2, sRect.Top + sRect.Height / 2 - gd / 2, gd, gd);
                 }
                 if (settingsHover)
@@ -3024,7 +3082,7 @@ s.percent={0}%");
                     using (var bBg = new SolidBrush(basketHover || basketPressed ? MaterialColors.PrimaryContainer : MaterialColors.SurfaceContainerHighest))
                     using (var bPen = new Pen(basketHover ? MaterialColors.Primary : MaterialColors.OutlineVariant, 1f))
                     using (var bFg = new SolidBrush(basketHover || basketPressed ? MaterialColors.OnPrimaryContainer : MaterialColors.OnSurface))
-                    using (var bFont = new Font("Segoe UI", 8f, FontStyle.Bold))
+                    using (var bFont = new Font("Segoe UI", Math.Max(5f, 8f * fscale), FontStyle.Bold))
                     {
                         g.FillRounded(br, 10, bBg);
                         g.DrawRounded(br, 10, bPen);
@@ -3077,7 +3135,7 @@ s.percent={0}%");
                         g.DrawRounded(zone, 12, zonePen);
                     }
                     DrawInboxIcon(g, zone, accentBrush);
-                    using (var emptyFont = new Font("Segoe UI", 8f))
+                    using (var emptyFont = new Font("Segoe UI", Math.Max(5f, 8f * fscale)))
                     {
                         g.DrawString(hovering ? Lang.T("box.dropHere") : Lang.T("box.empty"), emptyFont, hovering ? accentBrush : gray, new Rectangle(12, zone.Top + zone.Height - 44, Width - 24, 34), sfCenter);
                     }
@@ -4417,11 +4475,13 @@ s.percent={0}%");
         }
     }
 
-    // Jendela pengaturan: jumlah kotak, ukuran kotak, dan bahasa tampilan.
-    internal class SettingsForm : Form
+    // Tampilan Pengaturan yang tampil DI DALAM Panel Utama — bukan jendela terpisah.
+    internal class SettingsPanel : UserControl
     {
         private readonly AppContext app;
         private readonly Settings s;
+
+        public event EventHandler SettingsClosed;
 
         private NumericUpDown numBoxes;
         private TrackBar trackSize;
@@ -4438,6 +4498,7 @@ s.percent={0}%");
         private Button btnClose;
         private Button btnSystem;
         private Button btnReset;
+        private Button btnResetSize;
         private Button[] swatches;
         private ToolTip tip;
 
@@ -4449,25 +4510,19 @@ s.percent={0}%");
         private Font valueFont;
         private Font hintFont;
         private Font closeFont;
-        private bool fontsDisposed;
 
         private const int WM_NCLBUTTONDOWN = 0xA1;
         private const int HTCAPTION = 0x2;
 
-        public SettingsForm(AppContext app)
+        public SettingsPanel(AppContext app)
         {
             this.app = app;
             s = app.AppSettings;
 
-            Text = Lang.T("s.title");
-            FormBorderStyle = FormBorderStyle.None;
-            StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(400, 430);
+            Location = new Point(0, 0);
+            Size = new Size(380, 480);
             BackColor = MaterialColors.SurfaceContainerLow;
             DoubleBuffered = true;
-            ShowInTaskbar = false;
-            KeyPreview = true;
-            KeyDown += OnFormKeyDown;
 
             pendingAccentMode = s.AccentMode;
             pendingAccentHex = s.AccentHex;
@@ -4546,12 +4601,15 @@ s.percent={0}%");
                 UpdateColorSelection();
             };
 
+            btnResetSize = MakeButton(Lang.T("s.resetSize"), MaterialColors.SurfaceContainerHigh, MaterialColors.OnSurface, x, 420, 104, 36);
+            btnResetSize.Click += delegate { ResetBoxSize(); };
+
             lblHint = MakeLabel(Lang.T("s.hint"), hintFont, MaterialColors.Outline, x, 334, w, 30);
 
-            btnSave = MakeButton(Lang.T("s.save"), MaterialColors.Primary, MaterialColors.OnPrimary, x + w - 104, 378, 104, 36);
-            btnSave.Click += delegate { SaveAndClose(); };
-            btnCancel = MakeButton(Lang.T("s.cancel"), MaterialColors.SurfaceContainerHigh, MaterialColors.OnSurface, x + w - 220, 378, 104, 36);
-            btnCancel.Click += delegate { Close(); };
+            btnSave = MakeButton(Lang.T("s.save"), MaterialColors.Primary, MaterialColors.OnPrimary, x + w - 104, 420, 104, 36);
+            btnSave.Click += delegate { SaveSettings(); };
+            btnCancel = MakeButton(Lang.T("s.cancel"), MaterialColors.SurfaceContainerHigh, MaterialColors.OnSurface, x + w - 220, 420, 104, 36);
+            btnCancel.Click += delegate { RequestClose(); };
 
             btnClose = new Button();
             btnClose.Font = closeFont;
@@ -4560,10 +4618,10 @@ s.percent={0}%");
             btnClose.FlatAppearance.BorderSize = 0;
             btnClose.BackColor = Color.FromArgb(30, MaterialColors.OnSurface);
             btnClose.ForeColor = MaterialColors.OnSurface;
-            btnClose.Location = new Point(ClientSize.Width - 40, 12);
+            btnClose.Location = new Point(Size.Width - 40, 12);
             btnClose.Size = new Size(26, 26);
             btnClose.Cursor = Cursors.Hand;
-            btnClose.Click += delegate { Close(); };
+            btnClose.Click += delegate { RequestClose(); };
 
             Controls.Add(lblTitle);
             Controls.Add(lblLang);
@@ -4578,12 +4636,57 @@ s.percent={0}%");
             Controls.Add(btnSystem);
             Controls.Add(btnReset);
             Controls.Add(lblHint);
+            Controls.Add(btnResetSize);
             Controls.Add(btnSave);
             Controls.Add(btnCancel);
             Controls.Add(btnClose);
 
             SetRoundedRegion();
             UpdateColorSelection();
+        }
+
+        // Muat nilai dari pengaturan yang tersimpan — dipanggil setiap kali tampilan
+        // pengaturan dibuka ulang, agar konsisten dengan saat ini.
+        public void LoadFromSettings()
+        {
+            int langIdx = Lang.IndexOfCode(s.Language);
+            if (langIdx >= 0 && comboLang.SelectedIndex != langIdx) comboLang.SelectedIndex = langIdx;
+            UpdateLabels((comboLang.SelectedIndex >= 0 && comboLang.SelectedIndex < Lang.Codes.Length) ? Lang.Codes[comboLang.SelectedIndex] : "en");
+            numBoxes.Value = Math.Max(1, Math.Min(16, s.MaxBoxes));
+            trackSize.Value = Math.Max(60, Math.Min(180, s.BoxScale));
+            pendingAccentMode = s.AccentMode;
+            pendingAccentHex = s.AccentHex;
+            UpdateColorSelection();
+        }
+
+        // Simpan dari tampilan pengaturan.
+        private void SaveSettings()
+        {
+            int idx = comboLang.SelectedIndex;
+            string code = (idx >= 0 && idx < Lang.Codes.Length) ? Lang.Codes[idx] : "en";
+            s.MaxBoxes = (int)numBoxes.Value;
+            s.BoxScale = trackSize.Value;
+            s.Language = code;
+            s.AccentMode = pendingAccentMode;
+            s.AccentHex = pendingAccentHex;
+            s.Save();
+            app.ApplyTheme();
+            app.ApplySettings();
+            if (SettingsClosed != null) SettingsClosed(this, EventArgs.Empty);
+        }
+
+        private void RequestClose()
+        {
+            if (SettingsClosed != null) SettingsClosed(this, EventArgs.Empty);
+        }
+
+        // Reset ukuran drop box ke default (100%).
+        private void ResetBoxSize()
+        {
+            s.ResetBoxScale();
+            app.ApplyTheme();
+            app.ApplySettings();
+            RequestClose();
         }
 
         private Label MakeLabel(string text, Font f, Color c, int x, int y, int w, int h)
@@ -4673,7 +4776,6 @@ s.percent={0}%");
         {
             if (trackSize == null || lblTitle == null) return;
             string title = Lang.Tc(code, "s.title");
-            Text = title;
             lblTitle.Text = title;
             lblLang.Text = Lang.Tc(code, "s.lang");
             lblBoxes.Text = Lang.Tc(code, "s.boxes");
@@ -4692,27 +4794,6 @@ s.percent={0}%");
                 tip.SetToolTip(swatches[i], Lang.Tc(code, "c.use", label.ToLowerInvariant()));
             }
             lblSizeValue.Text = Lang.Tc(code, "s.percent", trackSize.Value);
-        }
-
-        private void SaveAndClose()
-        {
-            int idx = comboLang.SelectedIndex;
-            string code = (idx >= 0 && idx < Lang.Codes.Length) ? Lang.Codes[idx] : "en";
-            s.MaxBoxes = (int)numBoxes.Value;
-            s.BoxScale = trackSize.Value;
-            s.Language = code;
-            s.AccentMode = pendingAccentMode;
-            s.AccentHex = pendingAccentHex;
-            s.Save();
-            app.ApplyTheme();
-            app.ApplySettings();
-            Close();
-        }
-
-        private void OnFormKeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Escape) Close();
-            else if (e.KeyCode == Keys.Enter) SaveAndClose();
         }
 
         private void SetRoundedRegion()
@@ -4759,29 +4840,33 @@ s.percent={0}%");
             if (e.Y < 56 && e.X < ClientSize.Width - 50)
             {
                 Native.ReleaseCapture();
-                Native.SendMessage(Handle, WM_NCLBUTTONDOWN, new IntPtr(HTCAPTION), IntPtr.Zero);
+                // Drag menuju ke jendela induk (Panel Utama) supaya panel ini
+                // tidak menangkap drag-sendiri.
+                Form owner = FindForm();
+                if (owner != null) Native.SendMessage(owner.Handle, WM_NCLBUTTONDOWN, new IntPtr(HTCAPTION), IntPtr.Zero);
             }
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
+        protected override void Dispose(bool disposing)
         {
-            base.OnFormClosing(e);
-            if (fontsDisposed) return;
-            fontsDisposed = true;
-            try
+            if (disposing)
             {
-                if (titleFont != null) titleFont.Dispose();
-                if (labelFont != null) labelFont.Dispose();
-                if (valueFont != null) valueFont.Dispose();
-                if (hintFont != null) hintFont.Dispose();
-                if (closeFont != null) closeFont.Dispose();
-                if (btnSave != null && btnSave.Font != null) btnSave.Font.Dispose();
-                if (btnCancel != null && btnCancel.Font != null) btnCancel.Font.Dispose();
-                if (btnSystem != null && btnSystem.Font != null) btnSystem.Font.Dispose();
-                if (btnReset != null && btnReset.Font != null) btnReset.Font.Dispose();
-                if (tip != null) tip.Dispose();
+                try
+                {
+                    if (titleFont != null) titleFont.Dispose();
+                    if (labelFont != null) labelFont.Dispose();
+                    if (valueFont != null) valueFont.Dispose();
+                    if (hintFont != null) hintFont.Dispose();
+                    if (closeFont != null) closeFont.Dispose();
+                    if (btnSave != null && btnSave.Font != null) btnSave.Font.Dispose();
+                    if (btnCancel != null && btnCancel.Font != null) btnCancel.Font.Dispose();
+                    if (btnSystem != null && btnSystem.Font != null) btnSystem.Font.Dispose();
+                    if (btnReset != null && btnReset.Font != null) btnReset.Font.Dispose();
+                    if (tip != null) tip.Dispose();
+                }
+                catch { }
             }
-            catch { }
+            base.Dispose(disposing);
         }
     }
 
